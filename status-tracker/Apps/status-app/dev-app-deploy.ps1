@@ -5,8 +5,11 @@ param(
     [ValidateSet("dev","prod")]
     [string]$Environment,
 
+    [ValidateSet("container","managed")]
+    [string]$DeployMode = "container",
+
     [Parameter()]
-    [string] $BicepFile = (Join-Path -Path $PSScriptRoot -ChildPath "bicep/acr.bicep"),
+    [string] $BicepFile = (Join-Path -Path $PSScriptRoot -ChildPath "bicep/main.bicep"),
 
     [Parameter()]
     [string] $ConfigFile,
@@ -54,7 +57,12 @@ Write-Host "Active context: Tenant=$($ctx.Tenant.Id), Subscription=$($ctx.Subscr
 
 # Read parameter file
 $params = Get-Content $ParameterFile | ConvertFrom-Json
-$acrName = $params.parameters.acrName.value
+$acrName          = $params.parameters.acrName.value
+$appServicePlan   = $params.parameters.appServicePlanName.value
+$webAppName       = $params.parameters.webAppName.value
+$postgresName     = $params.parameters.postgresName.value
+$postgresAdmin    = $params.parameters.postgresAdmin.value
+$postgresPassword = $params.parameters.postgresPassword.value
 
 # Convert tags to hashtable
 $tags = @{}
@@ -62,37 +70,48 @@ $config.Tags.PSObject.Properties | ForEach-Object {
     $tags[$_.Name] = $_.Value
 }
 
-# Build ACR resource group name
-$acrResourceGroup = "$($config.ResourceGroupPrefix)-$acrName"
-Write-Host "Deploying ACR to Resource Group: $acrResourceGroup in $Environment environment"
+# Build resource group name
+$resourceGroup = "$($config.ResourceGroupPrefix)-$webAppName-$Environment"
+Write-Host "Deploying infra to Resource Group: $resourceGroup in $Environment environment"
 
-# Create ACR RG if not exists
-if (-not (Get-AzResourceGroup -Name $acrResourceGroup -ErrorAction SilentlyContinue)) {
-    New-AzResourceGroup -Name $acrResourceGroup -Location $config.DefaultLocation -Tag $tags
+# Create RG if not exists
+if (-not (Get-AzResourceGroup -Name $resourceGroup -ErrorAction SilentlyContinue)) {
+    New-AzResourceGroup -Name $resourceGroup -Location $config.DefaultLocation -Tag $tags
 }
 
-# Deploy ACR with Bicep
+# Read ACR secrets from Key Vault (already created in step 2)
+$acrLoginServer = (Get-AzKeyVaultSecret -VaultName $config.vaultName -Name "acrLoginServer").SecretValueText
+$acrId          = (Get-AzKeyVaultSecret -VaultName $config.vaultName -Name "acrId").SecretValueText
+
+# Deploy infra with Bicep
 $deployment = New-AzResourceGroupDeployment `
-    -ResourceGroupName $acrResourceGroup `
+    -ResourceGroupName $resourceGroup `
     -TemplateFile $BicepFile `
-    -TemplateParameterFile $ParameterFile
+    -TemplateParameterFile $ParameterFile `
+    -deployMode $DeployMode `
+    -acrLoginServer $acrLoginServer `
+    -acrId $acrId `
+    -postgresName $postgresName `
+    -postgresAdmin $postgresAdmin `
+    -postgresPassword $postgresPassword
 
 # Extract outputs
-$acrLoginServer = $deployment.Outputs['acrLoginServer'].Value
-$acrId          = $deployment.Outputs['acrId'].Value
+$webAppUrl      = $deployment.Outputs['webAppUrl'].Value
+$dbConnString   = $deployment.Outputs['dbConnectionString'].Value
 
 # Console
-Write-Host "ACR Login Server: $acrLoginServer"
-Write-Host "ACR Resource ID: $acrId"
+Write-Host "App Service URL: $webAppUrl"
+Write-Host "DB Connection String: $dbConnString"
 
 # File
 $outputData = @{
-    acrLoginServer = $acrLoginServer
-    acrId          = $acrId
+    acrLoginServer   = $acrLoginServer
+    acrId            = $acrId
+    webAppUrl        = $webAppUrl
+    dbConnectionString = $dbConnString
 }
 $outputPath = Join-Path $PSScriptRoot "outputs.$Environment.json"
 $outputData | ConvertTo-Json | Out-File $outputPath -Encoding utf8
 
-# Key Vault
-Set-AzKeyVaultSecret -VaultName $config.vaultName.value -Name "acrLoginServer" -Value $acrLoginServer
-Set-AzKeyVaultSecret -VaultName $config.vaultName.value -Name "acrId" -Value $acrId
+# Store DB connection string in Key Vault
+Set-AzKeyVaultSecret -VaultName $config.vaultName -Name "dbConnectionString" -Value $dbConnString

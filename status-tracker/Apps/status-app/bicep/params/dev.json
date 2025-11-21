@@ -1,14 +1,11 @@
 {
-  "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentParameters.json#",
-  "contentVersion": "1.0.0.0",
   "parameters": {
     "environment": { "value": "dev" },
-    "appName": { "value": "status-app" },
-    "location": { "value": "eastus" },
-    "acrLoginServer": { "value": "acr-wake-dev.azurecr.io" },
-    "acrUsername": { "value": "<acr-username>" },
-    "acrPassword": { "value": "<acr-password>" },
-    "dockerImage": { "value": "status-app:latest" },
-    "sku": { "value": "B1" }
+    "acrName": { "value": "crwakedev01" },
+    "appServicePlanName": { "value": "asp-dev" },
+    "webAppName": { "value": "statusapp-dev" },
+    "postgresName": { "value": "pg-dev" },
+    "postgresAdmin": { "value": "pgadmin" },
+    "postgresPassword": { "value": "SuperSecret123!" }
   }
 }

@@ -1,47 +1,52 @@
-targetScope = 'resourceGroup'
+param location string = resourceGroup().location
+param deployMode string = 'container' // 'container' or 'managed'
+param acrName string
+param appServicePlanName string
+param webAppName string
+param postgresName string = 'mypg'
+param postgresAdmin string = 'pgadmin'
+@secure()
+param postgresPassword string
 
-@description('Environment name (dev/prod)')
-param environment string
-
-@description('Application name')
-param appName string
-
-@description('Location for resources')
-param location string
-
-@description('Azure Container Registry login server')
-param acrLoginServer string
-
-@description('Azure Container Registry username')
-param acrUsername string
-
-@description('Azure Container Registry password')
-param acrPassword string
-
-@description('Docker image name (repository:tag)')
-param dockerImage string
-
-@description('App Service Plan SKU')
-@allowed([
-  'B1'
-  'B2'
-  'B3'
-  'P1v2'
-  'P2v2'
-])
-param sku string = 'B1'
-
-// Deploy App Service module
-module appServiceModule './modules/appservice.bicep' = {
-  name: '${appName}-appservice-module'
+module plan './modules/appServicePlan.bicep' = {
+  name: 'plan'
   params: {
-    appName: appName
-    environment: environment
     location: location
-    sku: sku
-    acrLoginServer: acrLoginServer
-    acrUsername: acrUsername
-    acrPassword: acrPassword
-    dockerImage: dockerImage
+    appServicePlanName: appServicePlanName
   }
 }
+
+module webApp './modules/webAppContainer.bicep' = {
+  name: 'webApp'
+  params: {
+    location: location
+    acrName: acrName
+    webAppName: webAppName
+    appServicePlanId: plan.outputs.appServicePlanId
+    vaultName: vaultName
+  }
+}
+
+module postgresContainer './modules/postgresContainer.bicep' = if (deployMode == 'container') {
+  name: 'postgresContainer'
+  params: {
+    location: location
+    webAppName: webAppName
+    acrName: acrName
+  }
+}
+
+module postgresManaged './modules/postgresManaged.bicep' = if (deployMode == 'managed') {
+  name: 'postgresManaged'
+  params: {
+    location: location
+    postgresName: postgresName
+    postgresAdmin: postgresAdmin
+    postgresPassword: postgresPassword
+  }
+}
+
+output webAppUrl string = webApp.outputs.webAppUrl
+output dbConnectionString string = deployMode == 'container'
+  ? postgresContainer.outputs.dbConnectionString
+  : postgresManaged.outputs.dbConnectionString
