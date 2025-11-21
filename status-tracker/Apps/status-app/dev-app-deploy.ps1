@@ -115,3 +115,9 @@ $outputData | ConvertTo-Json | Out-File $outputPath -Encoding utf8
 
 # Store DB connection string in Key Vault
 Set-AzKeyVaultSecret -VaultName $config.vaultName -Name "dbConnectionString" -Value $dbConnString
+
+# Get the App Service identity principal ID
+$appService = Get-AzWebApp -ResourceGroupName $resourceGroup -Name $webAppName
+
+# Assign Key Vault access to App Service managed identity
+Set-AzKeyVaultAccessPolicy -VaultName $config.vaultName -ObjectId $appService.Identity.PrincipalId -PermissionsToSecrets get,list

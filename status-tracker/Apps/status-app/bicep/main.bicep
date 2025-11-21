@@ -5,6 +5,7 @@ param appServicePlanName string
 param webAppName string
 param postgresName string = 'mypg'
 param postgresAdmin string = 'pgadmin'
+param vaultName string
 @secure()
 param postgresPassword string
 
