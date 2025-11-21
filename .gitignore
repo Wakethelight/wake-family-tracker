@@ -1,0 +1,42 @@
+# === Secrets & Credentials ===
+# Service principal credentials
+principle-folder/sp-deployment-credentials.json
+
+# Environment configs (real ones, not templates)
+config.dev.json
+config.prod.json
+
+# Deployment outputs
+outputs.dev.json
+outputs.prod.json
+
+# Any other secret/env files
+*.env
+*.pem
+*.pfx
+*.key
+
+# === Logs & Temp Files ===
+*.log
+*.tmp
+*.swp
+
+# === Build Artifacts ===
+bin/
+obj/
+*.dll
+*.exe
+
+# === IDE/Editor Metadata ===
+.vscode/
+.idea/
+*.suo
+*.user
+*.db
+.DS_Store
+
+# === Dependency Caches ===
+node_modules/
+.terraform/
+.pytest_cache/
+.coverage

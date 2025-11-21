@@ -1,0 +1,59 @@
+trigger:
+  branches:
+    include:
+      - main   # or whichever branch you want to deploy from
+
+pool:
+  vmImage: 'ubuntu-latest'
+
+variables:
+  # You can override this in pipeline variables or at runtime
+  environment: 'prod'
+
+steps:
+  - task: Checkout@1
+    displayName: 'Checkout code'
+
+  # Install PowerShell 7
+  - task: UseDotNet@2
+    displayName: 'Install PowerShell 7'
+    inputs:
+      packageType: 'sdk'
+      version: '7.4.x'
+      installationPath: $(Agent.ToolsDirectory)/pwsh
+
+  # Install Az modules
+  - task: PowerShell@2
+    displayName: 'Install Az PowerShell modules'
+    inputs:
+      targetType: 'inline'
+      script: |
+        Install-Module -Name Az -Force -AllowClobber -Scope CurrentUser
+
+  - task: AzureCLI@2
+    displayName: 'Install Bicep CLI'
+    inputs:
+      azureSubscription: 'My-Service-Connection'
+      scriptType: 'pscore'
+      scriptLocation: 'inlineScript'
+      inlineScript: |
+        az bicep install
+
+  # Azure login using service connection
+  - task: AzureCLI@2
+    displayName: 'Azure Login'
+    inputs:
+      azureSubscription: 'My-Service-Connection'   # Name of your DevOps service connection
+      scriptType: 'pscore'
+      scriptLocation: 'inlineScript'
+      inlineScript: |
+        Write-Host "Logged into Azure with service connection"
+
+  # Run deployment script
+  - task: PowerShell@2
+    displayName: 'Deploy KeyVault'
+    inputs:
+      targetType: 'filePath'
+      filePath: 'status-tracker/KeyVault/deploy-keyvault.ps1'
+      arguments: '-Environment $(environment)'
+      pwsh: true

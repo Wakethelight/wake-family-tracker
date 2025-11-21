@@ -5,6 +5,6 @@
     "environment": { "value": "dev" },
     "vaultName": { "value": "kv-wake-dev" },
     "location": { "value": "eastus" },
-    "skuName": { "value": "Standard" }
+    "skuName": { "value": "standard" }
   }
 }

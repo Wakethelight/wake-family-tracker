@@ -1,21 +1,47 @@
+name: Deploy ACR
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [ main ]
+
 jobs:
   deploy:
-    runs-on: windows-latest
+    runs-on: ubuntu-latest
+
     steps:
-      - name: Checkout repo
-        uses: actions/checkout@v3
+      - name: Checkout
+        uses: actions/checkout@v4
 
-      - name: Install Az PowerShell
+      # Step 1: Login with federated identity (OIDC)
+      - name: Azure Login (OIDC)
+        uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      # Step 2: Fetch SP credentials JSON from Key Vault
+      - name: Get SP credentials from Key Vault
         run: |
-          Install-Module -Name Az -Repository PSGallery -Force -Scope CurrentUser
-        shell: pwsh
+          CREDS=$(az keyvault secret show \
+            --vault-name kv-wake-dev \
+            --name sp-deployment-credentials \
+            --query value -o tsv)
+          echo "AZURE_CREDENTIALS=$CREDS" >> $GITHUB_ENV
 
-      - name: Install Azure CLI + Bicep
-        run: |
-          Invoke-WebRequest -Uri https://aka.ms/installazurecliwindows -OutFile .\AzureCLI.msi
-          Start-Process msiexec.exe -ArgumentList '/I AzureCLI.msi /quiet' -Wait
-          az bicep install
-        shell: pwsh
+      # Step 3: Login with SP JSON
+      - name: Azure Login with SP JSON
+        uses: azure/login@v2
+        with:
+          creds: ${{ env.AZURE_CREDENTIALS }}
 
-      - name: Run deployment script
-        run: pwsh ./KeyVault/deploy-keyvault-dev.ps1
+      # Step 4: Setup PowerShell
+      - name: Setup PowerShell
+        uses: PowerShell/PowerShell-Action@v1.2.3
+        with:
+          pwsh: '7.2.0'
+
+      # Step 5: Run your deploy script
+      - name: Deploy ACR
+        run: pwsh ./status-tracker/ACR/deploy-acr.ps1 -Environment dev

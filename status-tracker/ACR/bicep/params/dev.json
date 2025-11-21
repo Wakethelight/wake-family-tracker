@@ -3,7 +3,7 @@
   "contentVersion": "1.0.0.0",
   "parameters": {
     "environment": { "value": "dev" },
-    "acrName": { "value": "acr-wake-dev" },
+    "acrName": { "value": "acrwakedev01" },
     "location": { "value": "eastus" },
     "acrSku": { "value": "Basic" }
   }

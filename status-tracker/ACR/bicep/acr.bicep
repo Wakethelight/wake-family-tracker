@@ -6,6 +6,9 @@ param acrName string
 @description('Location for ACR')
 param location string
 
+@description('The environment tag for the resources.')
+param environment string
+
 @description('SKU for ACR')
 @allowed([
   'Basic'
@@ -19,6 +22,9 @@ resource acr 'Microsoft.ContainerRegistry/registries@2023-01-01-preview' = {
   location: location
   sku: {
     name: acrSku
+  }
+  tags: {
+    Environment: environment
   }
   properties: {
     adminUserEnabled: true

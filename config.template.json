@@ -1,0 +1,11 @@
+{
+  "SubscriptionId": "<your-subscription-id>",
+  "TenantId": "<your-tenant-id>",
+  "ResourceGroupPrefix": "<prefix>",
+  "vaultName": "<vault-name>",
+  "Tags": {
+    "env": "<dev-or-prod>",
+    "owner": "<your-name-or-team>"
+  },
+  "DefaultLocation": "<azure-region>"
+}

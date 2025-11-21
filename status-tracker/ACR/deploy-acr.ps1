@@ -1,5 +1,3 @@
-##not ready for production use##
-
 [CmdletBinding()]
 param(
     [ValidateSet("dev","prod")]
@@ -39,7 +37,7 @@ if (-not $ParameterFile) {
 # Load config
 $config = Get-Content $ConfigFile | ConvertFrom-Json
 
-# Only run Connect-AzAccount locally
+# Only run Connect-AzAccount locallyget 
 $subscriptionId = $config.SubscriptionId
 if ($env:GITHUB_ACTIONS -or $env:TF_BUILD) {
     Write-Host "Running in CI/CD, assuming Azure login handled by pipeline."
@@ -94,6 +92,10 @@ $outputData = @{
 $outputPath = Join-Path $PSScriptRoot "outputs.$Environment.json"
 $outputData | ConvertTo-Json | Out-File $outputPath -Encoding utf8
 
-# Key Vault
-Set-AzKeyVaultSecret -VaultName $config.vaultName.value -Name "acrLoginServer" -Value $acrLoginServer
-Set-AzKeyVaultSecret -VaultName $config.vaultName.value -Name "acrId" -Value $acrId
+# Convert outputs to SecureString
+$acrLoginServerSecure = ConvertTo-SecureString $acrLoginServer -AsPlainText -Force
+$acrIdSecure          = ConvertTo-SecureString $acrId -AsPlainText -Force
+
+# Save to Key Vault
+Set-AzKeyVaultSecret -VaultName $config.vaultName -Name "acrLoginServer" -SecretValue $acrLoginServerSecure
+Set-AzKeyVaultSecret -VaultName $config.vaultName -Name "acrId" -SecretValue $acrIdSecure

@@ -4,6 +4,9 @@ param vaultName string
 @description('The location of the resources')
 param location string = resourceGroup().location
 
+@description('The environment tag for the resources.')
+param environment string
+
 @description('The SKU of the vault to be created.')
 @allowed([
   'standard'
@@ -14,6 +17,9 @@ param skuName string = 'standard'
 resource vault 'Microsoft.KeyVault/vaults@2021-11-01-preview' = {
   name: vaultName
   location: location
+  tags: {
+    Environment: environment
+  }
   properties: {
     accessPolicies:[]
     enableRbacAuthorization: true
