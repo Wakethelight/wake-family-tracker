@@ -109,8 +109,15 @@ else {
     Write-Host "Credentials saved to $outputPath"
     Write-Host "Last reset timestamp: $($spCredentials.lastReset)"
 
-    # 👉 Push initial secret to Key Vault
-    $clientSecretSecure = ConvertTo-SecureString $sp.password -AsPlainText -Force
-    Set-AzKeyVaultSecret -VaultName $vaultName -Name $secretName -SecretValue $clientSecretSecure
-    Write-Host "Stored new secret in Key Vault '$vaultName' under name '$secretName'."
+# After creating or resetting the SP
+$spCredentialsJson = $spCredentials | ConvertTo-Json -Depth 10 -Compress
+
+# Convert to SecureString
+$spCredentialsSecure = ConvertTo-SecureString $spCredentialsJson -AsPlainText -Force
+
+# Push to Key Vault
+Set-AzKeyVaultSecret -VaultName $vaultName -Name "sp-deployment-credentials" -SecretValue $spCredentialsSecure
+
+Write-Host "Stored full SP credentials JSON in Key Vault '$vaultName' under secret 'sp-deployment-credentials'."
+
 }
