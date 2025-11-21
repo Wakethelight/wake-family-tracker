@@ -55,7 +55,6 @@ Write-Host "Active context: Tenant=$($ctx.Tenant.Id), Subscription=$($ctx.Subscr
 # Read parameter file
 $params = Get-Content $ParameterFile | ConvertFrom-Json
 $acrName = $params.parameters.acrName.value
-$location  = $params.parameters.location.value
 
 # Convert tags to hashtable
 $tags = @{}
