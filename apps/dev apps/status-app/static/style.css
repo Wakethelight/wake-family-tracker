@@ -5,6 +5,36 @@ body {
     color: #333;
 }
 
+nav {
+    margin-bottom: 1rem;
+}
+
+.summary {
+    display: flex;
+    gap: 2rem;
+    margin-bottom: 1rem;
+    background: #eef6fb;
+    padding: 1rem;
+    border-radius: 6px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+}
+
+.summary p {
+    margin: 0;
+    font-size: 1.1rem;
+}
+
+nav a {
+    text-decoration: none;
+    color: #3498db;
+    font-weight: bold;
+    margin-right: 1rem;
+}
+
+nav a:hover {
+    color: #2980b9;
+}
+
 h1 {
     color: #2c3e50;
     margin-bottom: 1rem;

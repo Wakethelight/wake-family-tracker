@@ -5,6 +5,12 @@
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 </head>
 <body>
+    <!-- Navigation    -->
+    <nav>
+        <a href="{{ url_for('index') }}">Set Status</a> |
+        <a href="{{ url_for('dashboard') }}">View Dashboard</a>
+    </nav>
+    
     <h1>Set Your Status</h1>
     <form method="POST">
         <label>User ID:</label>
