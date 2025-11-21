@@ -23,7 +23,7 @@ if (-not (Get-AzResourceGroup -Name $acrResourceGroup -ErrorAction SilentlyConti
 }
 
 # Deploy ACR Bicep template
-New-AzResourceGroupDeployment `
-    -ResourceGroupName $acrResourceGroup `
-    -TemplateFile $templateFile `
-    -TemplateParameterFile $parameterFile
+az deployment group create `
+    --resource-group $acrResourceGroup `
+    --template-file $templateFile `
+    --parameters $parameterFile

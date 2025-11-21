@@ -37,7 +37,7 @@ if (-not (Get-AzResourceGroup -Name $appResourceGroup -ErrorAction SilentlyConti
 }
 
 # Deploy App Bicep template
-New-AzResourceGroupDeployment `
-    -ResourceGroupName $appResourceGroup `
-    -TemplateFile $templateFile `
-    -TemplateParameterFile $parameterFile
+az deployment group create `
+    --resource-group $appResourceGroup `
+    --template-file $templateFile `
+    --parameters $parameterFile
