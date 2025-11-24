@@ -157,7 +157,29 @@ Set-AzKeyVaultSecret `
 Write-Host "Updated Key Vault secret 'db-connection-string'"
 
 # ================================
-# 12. FINAL SUCCESS
+# 12. GRANT APP SERVICE IDENTITY ACCESS TO KEY VAULT (cross-region safe)
+# ================================
+Write-Host "Granting App Service identity access to Key Vault..." -ForegroundColor Yellow
+
+$appIdentity = $deployment.Outputs.appServiceName.Value
+$principalId = (Get-AzWebApp -ResourceGroupName $resourceGroupName -Name $appIdentity).Identity.PrincipalId
+
+if (-not $principalId) {
+    Write-Error "Could not get managed identity PrincipalId — skipping KV access"
+} else {
+    # This works even if KV is in eastus and app is in centralus
+    Set-AzKeyVaultAccessPolicy `
+        -VaultName $config.VaultName `
+        -ObjectId $principalId `
+        -PermissionsToSecrets get `
+        -BypassObjectIdValidation  # ← this is the magic for cross-region
+        -ErrorAction Continue
+
+    Write-Host "Granted 'get' secrets permission to $appIdentity on vault $($config.VaultName)" -ForegroundColor Green
+}
+
+# ================================
+# 13. FINAL SUCCESS
 # ================================
 Write-Host "DEPLOYMENT COMPLETED SUCCESSFULLY!" -ForegroundColor Green
 Write-Host "App URL: https://$appServiceName.azurewebsites.net" -ForegroundColor Cyan
