@@ -59,10 +59,18 @@ jobs:
 
       - name: Deploy Infrastructure
         id: deploy
-        if: steps.changes.outputs.infra == 'true' || steps.changes.outputs.app-code == 'true'  # ✅ Added: Missing in your YAML! Deploys only on relevant changes
-        shell: pwsh  # ✅ Perfect: Your "personal favorite" — Az pre-loaded via enable-AzPSSession
+        if: steps.changes.outputs.infra == 'true' || steps.changes.outputs.app-code == 'true'
+        shell: pwsh
         run: |
-          & "$env:GITHUB_WORKSPACE/apps/dev_apps/status-app/infra/deploy-status-app.ps1"  # ✅ Bulletproof path
+          # Install/Update Az module — fixes loading issues on Ubuntu (Microsoft rec for 2025)
+          Install-Module -Name Az -Scope CurrentUser -Repository PSGallery -Force -AllowClobber -SkipPublisherCheck
+          
+          # Optional: Import explicitly (extra safety)
+          Import-Module Az.Accounts
+          Import-Module Az.Resources
+          
+          # Run your script — now Az is guaranteed loaded
+          & "$env:GITHUB_WORKSPACE/apps/dev_apps/status-app/infra/deploy-status-app.ps1"
         env:
           POSTGRES_PASSWORD: ${{ secrets.POSTGRES_PASSWORD }}
           AZURE_TENANT_ID: ${{ vars.AZURE_TENANT_ID }}
