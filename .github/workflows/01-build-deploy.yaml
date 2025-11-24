@@ -81,5 +81,4 @@ jobs:
             --name statusapp-dev \
             --resource-group rg-dev-statusapp \
             --container-image-name ${{ vars.ACR_NAME }}.azurecr.io/status-app:${{ env.IMAGE_TAG }} \
-            --container-registry-url https://${{ vars.ACR_NAME }}.azurecr.io \
-            --force
+            --container-registry-url https://${{ vars.ACR_NAME }}.azurecr.io
