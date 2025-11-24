@@ -144,10 +144,10 @@ Set-AzKeyVaultSecret `
     -SecretValue (ConvertTo-SecureString $connString -AsPlainText -Force)
 Write-Host "Updated Key Vault secret 'db-connection-string'"
 
-# REMOVED: Section 12 (Grant access) — Now handled in Bicep!
+# REMOVED: Section 12 (Grant access) — Now handled in Bicep module!
 
 # ================================
-# 12. ENSURE APP SERVICE IS RUNNING (renumber from 14)
+# 12. ENSURE APP SERVICE IS RUNNING (renumbered from 13)
 # ================================
 Write-Host "Ensuring App Service is running..." -ForegroundColor Yellow
 $app = Get-AzWebApp -ResourceGroupName $resourceGroupName -Name $appServiceName -ErrorAction Stop
@@ -164,7 +164,7 @@ else {
 }
 
 # ================================
-# 13. FINAL SUCCESS
+# 13. FINAL SUCCESS (renumbered)
 # ================================
 Write-Host "DEPLOYMENT COMPLETED SUCCESSFULLY!" -ForegroundColor Green
 Write-Host "App URL: https://$appServiceName.azurewebsites.net" -ForegroundColor Cyan
