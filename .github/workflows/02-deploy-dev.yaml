@@ -11,6 +11,9 @@ jobs:
   deploy:
     if: ${{ github.event.workflow_run.conclusion == 'success' }}
     runs-on: ubuntu-latest
+    permissions:
+      id-token: write        # THIS LINE WAS MISSING
+      contents: read         # this one is nice to have
     defaults:
       run:
         shell: pwsh
