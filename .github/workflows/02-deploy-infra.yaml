@@ -5,8 +5,9 @@ on:
     branches: [ main ]
     paths:
       - 'apps/dev_apps/status-app/infra/**'
-      - 'apps/dev_apps/status-app/deploy.ps1'
-      - '.github/workflows/02-deploy-infra-only.yml'
+      - 'apps/dev_apps/status-app/deploy-status-app.ps1'
+      - '.github/workflows/02-deploy-infra-only.yml' # Self-trigger if needed
+
   workflow_dispatch:
 
 jobs:
@@ -32,7 +33,7 @@ jobs:
           POSTGRES_PASSWORD: ${{ secrets.POSTGRES_PASSWORD }}
         run: |
           Write-Host "Deploying infrastructure changes only (no image rebuild)"
-          ./deploy.ps1 -Environment dev
+          ./deploy-status-app.ps1 -Environment dev
 
       # Optional: Keep App Service on current image (no change)
       - name: Confirm current image tag

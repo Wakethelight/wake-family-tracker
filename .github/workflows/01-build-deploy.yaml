@@ -43,7 +43,7 @@ jobs:
         env:
           POSTGRES_PASSWORD: ${{ secrets.POSTGRES_PASSWORD }}
         run: |
-          ./deploy.ps1 -Environment dev
+          ./deploy-status-app.ps1 -Environment dev
 
       - name: Update App Service Image
         run: |
