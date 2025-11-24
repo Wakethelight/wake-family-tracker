@@ -1,0 +1,54 @@
+name: 01 - Build & Deploy on Code Change
+
+on:
+  push:
+    branches: [ main ]
+    paths:
+      - 'apps/dev_apps/status-app/**'          # Your app code + Dockerfile
+      - '.github/workflows/01-build-and-deploy.yml'  # Self-trigger if needed
+  workflow_dispatch:
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+      contents: read
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Azure Login (OIDC)
+        uses: azure/login@v2
+        with:
+          client-id: ${{ vars.AZURE_CLIENT_ID }}
+          tenant-id: ${{ vars.AZURE_TENANT_ID }}
+          subscription-id: ${{ vars.AZURE_SUBSCRIPTION_ID }}
+
+      # Build & Push Image
+      - name: Build and Push Image
+        working-directory: apps/dev_apps/status-app
+        run: |
+          IMAGE="${{ vars.ACR_NAME }}.azurecr.io/status-app"
+          SHA=$(git rev-parse --short HEAD)
+          az acr login --name ${{ vars.ACR_NAME }}
+          docker build -t $IMAGE:latest -t $IMAGE:$SHA .
+          docker push $IMAGE:latest
+          docker push $IMAGE:$SHA
+          echo "IMAGE_TAG=$SHA" >> $GITHUB_ENV
+
+      # Deploy Infra + Update App Service
+      - name: Deploy Infra & Update App Service
+        working-directory: apps/dev_apps/status-app
+        env:
+          POSTGRES_PASSWORD: ${{ secrets.POSTGRES_PASSWORD }}
+        run: |
+          ./deploy.ps1 -Environment dev
+
+      - name: Update App Service Image
+        run: |
+          az webapp config container set \
+          --name statusapp-dev \
+          --resource-group rg-dev-statusapp \
+          --docker-custom-image-name ${{ vars.ACR_NAME }}.azurecr.io/status-app:${{ env.IMAGE_TAG }} \
+          --docker-registry-server-url https://${{ vars.ACR_NAME }}.azurecr.io

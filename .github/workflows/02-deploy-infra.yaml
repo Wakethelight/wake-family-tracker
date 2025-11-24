@@ -1,0 +1,41 @@
+name: 02 - Deploy Infra Only (Bicep changes)
+
+on:
+  push:
+    branches: [ main ]
+    paths:
+      - 'apps/dev_apps/status-app/infra/**'
+      - 'apps/dev_apps/status-app/deploy.ps1'
+      - '.github/workflows/02-deploy-infra-only.yml'
+  workflow_dispatch:
+
+jobs:
+  deploy-infra:
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+      contents: read
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Azure Login (OIDC)
+        uses: azure/login@v2
+        with:
+          client-id: ${{ vars.AZURE_CLIENT_ID }}
+          tenant-id: ${{ vars.AZURE_TENANT_ID }}
+          subscription-id: ${{ vars.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Deploy Infrastructure Only
+        working-directory: apps/dev_apps/status-app
+        env:
+          POSTGRES_PASSWORD: ${{ secrets.POSTGRES_PASSWORD }}
+        run: |
+          Write-Host "Deploying infrastructure changes only (no image rebuild)"
+          ./deploy.ps1 -Environment dev
+
+      # Optional: Keep App Service on current image (no change)
+      - name: Confirm current image tag
+        run: |
+          CURRENT=$(az webapp config container show --name statusapp-dev --resource-group rg-dev-statusapp --query docker-custom-image-name --query "dockerCustomImageName" -o tsv)
+          echo "App Service still running: $CURRENT"
