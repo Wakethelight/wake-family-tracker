@@ -16,6 +16,8 @@
     "postgresImage": { "value": "postgres:15-alpine" },
     "postgresCpu": { "value": 2 },
     "postgresMemoryGb": { "value": 4 },
+    "osType": { "value": "Linux" },
+    "vmSize": { "value": "Standard_D2_v3" },
     "postgresDbName": { "value": "statusdb" },
     "postgresUser": { "value": "postgres" }
   }

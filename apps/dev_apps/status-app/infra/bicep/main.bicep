@@ -7,16 +7,18 @@ param appName string
 param location string
 param acrName string
 param vaultName string
-param appServicePlanSku string = 'B1'
+param appServicePlanSku string
 @secure()
 param postgresPassword string
 param dnsLabel string
 param aciContainerGroupName string
-param postgresImage string = 'postgres:15-alpine'
-param postgresCpu int = 1
-param postgresMemoryGb int = 1
-param postgresDbName string = 'statusdb'
-param postgresUser string = 'postgres'
+param postgresImage string
+param postgresCpu int
+param postgresMemoryGb int
+param postgresDbName string
+param postgresUser string
+param vmSize string
+param osType string
 
 module storage 'modules/storage.bicep' = {
   name: 'storage-deploy'
@@ -36,6 +38,8 @@ module aci 'modules/aci.bicep' = {
     storageAccountKey: storage.outputs.storageAccountKey
 
     // Newly passed from dev.json
+    osType: osType
+    vmSize: vmSize
     containerGroupName: aciContainerGroupName
     postgresImage: postgresImage
     postgresCpu: postgresCpu
