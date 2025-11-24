@@ -4,18 +4,15 @@
   "parameters": {
     "environment": { "value": "dev" },
     "appName": { "value": "statusapp" },
-    "location": { "value": "eastus" },
-
+    "location": { "value": "centralus" },
     "acrName": { "value": "acrwakedev01" },
     "vaultName": { "value": "kv-wake-dev" },
-
-    "appServicePlanSku": { "value": "S1" },
+    "appServicePlanSku": { "value": "F1" },
     "dnsLabel": { "value": "statusdb-dev-01" },
-
     "aciContainerGroupName": { "value": "statusdb-aci" },
     "postgresImage": { "value": "postgres:15-alpine" },
     "postgresCpu": { "value": 1 },
-    "postgresMemoryGb": { "value": 2 },
+    "postgresMemoryGb": { "value": 1.5 },
     "osType": { "value": "Linux" },
     "postgresDbName": { "value": "statusdb" },
     "postgresUser": { "value": "postgres" }
