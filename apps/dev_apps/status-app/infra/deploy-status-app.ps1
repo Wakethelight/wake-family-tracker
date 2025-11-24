@@ -105,24 +105,30 @@ if ($env:GITHUB_ACTIONS) {
 # ================================
 # 8. DEPLOY BICEP
 # ================================
-$bicepFile        = Join-Path $PSScriptRoot "bicep/main.bicep"
-$parameterFile    = Join-Path $PSScriptRoot "bicep/params/$Environment.json"
+$bicepFile     = Join-Path $PSScriptRoot "bicep/main.bicep"
+$parameterFile = Join-Path $PSScriptRoot "bicep/params/$Environment.json"
 
-Write-Host "Deploying Bicep template..."
+$deploymentName = "statusapp-deploy-$(Get-Date -Format 'yyyyMMdd-HHmmss')"
+
+Write-Host "Deploying Bicep with deployment name: $deploymentName"
 New-AzResourceGroupDeployment `
+    -Name $deploymentName `
     -ResourceGroupName $resourceGroupName `
     -TemplateFile $bicepFile `
     -TemplateParameterFile $parameterFile `
-    -postgresPassword $postgresPasswordPlain `
+    -postgresPassword (ConvertTo-SecureString $postgresPasswordPlain -AsPlainText -Force) `
     -Verbose
 
 # ================================
 # 9. GET DEPLOYMENT OUTPUTS
 # ================================
-$deployment = Get-AzResourceGroupDeployment -ResourceGroupName $resourceGroupName -Name "main"
+$deployment       = Get-AzResourceGroupDeployment -ResourceGroupName $resourceGroupName -Name $deploymentName
 $dbFqdn           = $deployment.Outputs.dbFqdn.Value
 $storageName      = $deployment.Outputs.storageAccountName.Value
 $storageKey       = $deployment.Outputs.storageAccountKey.Value
+
+Write-Host "DB FQDN: $dbFqdn"
+Write-Host "Storage Account: $storageName"
 
 # ================================
 # 10. UPLOAD init.sql
