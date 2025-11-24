@@ -28,5 +28,5 @@ resource app 'Microsoft.Web/sites@2023-12-01' = {
   identity: { type: 'SystemAssigned' }
 }
 
-output identityPrincipalId string = appService.identity.principalId  // System-assigned identity
-output appServiceName string = appService.name
+output identityPrincipalId string = app.identity.principalId  // System-assigned identity
+output appServiceName string = app.name
