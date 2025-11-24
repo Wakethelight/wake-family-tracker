@@ -18,11 +18,13 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      # Install Az PowerShell once (used later)
-      - name: Install Az PowerShell Module
-        run: |
-          pwsh -c "Install-Module -Name Az -Scope CurrentUser -Force -AllowClobber"
-
+      # THIS IS THE ONLY ONE YOU NEED NOW
+      - name: Setup Azure PowerShell
+        uses: azure/powershell@v1
+        with:
+          azPSVersion: "latest"
+          inlineScript: |
+            Write-Host "Azure PowerShell loaded successfully"
       # Azure Login (fixes both az CLI and Az PowerShell)
       - name: Azure Login (OIDC)
         uses: azure/login@v2
