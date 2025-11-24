@@ -33,19 +33,17 @@ jobs:
           enable-AzPSSession: true
 
       # THIS IS THE SMART FILTER — ONLY BUILD IF CODE CHANGED
-      - name: Check if app code changed
+      - name: Check if app code changed (excludes infra)
         id: changes
         uses: dorny/paths-filter@v3
         with:
           filters: |
-            src:
+            code:
               - 'apps/dev_apps/status-app/**'
-              - '!apps/dev_apps/status-app/infra/**'   # ignore infra-only changes
-              - '!apps/dev_apps/status-app/infra/db/**' # optional: also ignore init.sql
-
+              - '!apps/dev_apps/status-app/infra/**'      
       # BUILD & PUSH ONLY IF CODE CHANGED
       - name: Build and Push Image (only on code change)
-        if: steps.changes.outputs.src == 'true'
+        if: steps.changes.outputs.code == 'true'
         working-directory: apps/dev_apps/status-app
         run: |
           IMAGE="${{ vars.ACR_NAME }}.azurecr.io/status-app"
@@ -59,13 +57,14 @@ jobs:
 
       # REUSE LAST IMAGE IF NO CODE CHANGE
       - name: Reuse existing image (no code change)
-        if: steps.changes.outputs.src != 'true'
+        if: steps.changes.outputs.code != 'true'
         run: |
           echo "No app code changes detected — reusing existing image"
           echo "IMAGE_TAG=latest" >> $GITHUB_ENV
 
       # DEPLOY INFRA (always runs — fast if nothing changed)
       - name: Deploy Infrastructure
+        id: deploy
         working-directory: apps/dev_apps/status-app/infra
         env:
           POSTGRES_PASSWORD: ${{ secrets.POSTGRES_PASSWORD }}
@@ -76,9 +75,12 @@ jobs:
 
       # UPDATE APP SERVICE TO CURRENT IMAGE
       - name: Update App Service Image
+        env:
+          APP_SERVICE_NAME: ${{ steps.deploy.outputs.APP_SERVICE_NAME }}
+          RESOURCE_GROUP_NAME: ${{ steps.deploy.outputs.RESOURCE_GROUP_NAME }}
         run: |
           az webapp config container set \
-            --name statusapp-dev \
-            --resource-group rg-dev-statusapp \
+            --name $APP_SERVICE_NAME \
+            --resource-group $RESOURCE_GROUP_NAME \
             --container-image-name ${{ vars.ACR_NAME }}.azurecr.io/status-app:${{ env.IMAGE_TAG }} \
             --container-registry-url https://${{ vars.ACR_NAME }}.azurecr.io

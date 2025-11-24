@@ -160,4 +160,8 @@ Write-Host "Updated Key Vault secret 'db-connection-string'"
 # 12. FINAL SUCCESS
 # ================================
 Write-Host "DEPLOYMENT COMPLETED SUCCESSFULLY!" -ForegroundColor Green
-Write-Host "App URL: https://$appServiceName.azurewebsites.net"
+Write-Host "App URL: https://$appServiceName.azurewebsites.net" -ForegroundColor Cyan
+
+# Make these available to GitHub Actions
+Write-Host "##vso[task.setvariable variable=APP_SERVICE_NAME;isOutput=true]$($deployment.Outputs.appServiceName.Value)"
+Write-Host "##vso[task.setvariable variable=RESOURCE_GROUP_NAME;isOutput=true]$resourceGroupName"

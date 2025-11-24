@@ -22,7 +22,6 @@ resource app 'Microsoft.Web/sites@2023-12-01' = {
       appSettings: [
         { name: 'WEBSITES_PORT', value: '8000' }
         { name: 'KEY_VAULT_URL', value: 'https://${vaultName}.vault.azure.net/' }
-        { name: 'WEBSITE_SITE_NAME', value: '${appName}-${environment}' }
       ]
     }
   }
