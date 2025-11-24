@@ -28,18 +28,4 @@ resource app 'Microsoft.Web/sites@2023-12-01' = {
   identity: { type: 'SystemAssigned' }
 }
 
-// Grant App Service identity Get access to KV
-resource kvAccess 'Microsoft.KeyVault/vaults/accessPolicies@2023-07-01' = {
-  name: '${vaultName}/add'
-  properties: {
-    accessPolicies: [
-      {
-        tenantId: subscription().tenantId
-        objectId: app.identity.principalId
-        permissions: { secrets: ['get'] }
-      }
-    ]
-  }
-}
-
 output appServiceName string = app.name
