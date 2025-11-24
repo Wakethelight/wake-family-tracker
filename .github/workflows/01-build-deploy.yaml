@@ -4,8 +4,8 @@ on:
   push:
     branches: [ main ]
     paths:
-      - 'apps/dev_apps/status-app/**'          # Your app code + Dockerfile
-      - '.github/workflows/01-build-deploy.yaml'  # Self-trigger if needed
+      - 'apps/dev_apps/status-app/**'
+      - '.github/workflows/01-build-and-deploy.yml'
   workflow_dispatch:
 
 jobs:
@@ -37,18 +37,19 @@ jobs:
           docker push $IMAGE:$SHA
           echo "IMAGE_TAG=$SHA" >> $GITHUB_ENV
 
-      # Deploy Infra + Update App Service
+      # Deploy Infra — exact file name + path
       - name: Deploy Infra & Update App Service
-        working-directory: apps/dev_apps/status-app
+        working-directory: apps/dev_apps/status-app/infra
         env:
           POSTGRES_PASSWORD: ${{ secrets.POSTGRES_PASSWORD }}
         run: |
-          ./deploy-status-app.ps1 -Environment dev
+          pwsh ./deploy-status-app.ps1 -Environment dev
 
+      # Update App Service
       - name: Update App Service Image
         run: |
           az webapp config container set \
-          --name statusapp-dev \
-          --resource-group rg-dev-statusapp \
-          --docker-custom-image-name ${{ vars.ACR_NAME }}.azurecr.io/status-app:${{ env.IMAGE_TAG }} \
-          --docker-registry-server-url https://${{ vars.ACR_NAME }}.azurecr.io
+            --name statusapp-dev \
+            --resource-group rg-dev-statusapp \
+            --docker-custom-image-name ${{ vars.ACR_NAME }}.azurecr.io/status-app:${{ env.IMAGE_TAG }} \
+            --docker-registry-server-url https://${{ vars.ACR_NAME }}.azurecr.io

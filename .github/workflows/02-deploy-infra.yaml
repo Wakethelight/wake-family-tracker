@@ -6,8 +6,7 @@ on:
     paths:
       - 'apps/dev_apps/status-app/infra/**'
       - 'apps/dev_apps/status-app/deploy-status-app.ps1'
-      - '.github/workflows/02-deploy-infra.yaml' # Self-trigger if needed
-
+      - '.github/workflows/02-deploy-infra-only.yml'
   workflow_dispatch:
 
 jobs:
@@ -27,16 +26,16 @@ jobs:
           tenant-id: ${{ vars.AZURE_TENANT_ID }}
           subscription-id: ${{ vars.AZURE_SUBSCRIPTION_ID }}
 
+      # Deploy Infra — exact file name + path
       - name: Deploy Infrastructure Only
-        working-directory: apps/dev_apps/status-app
+        working-directory: apps/dev_apps/status-app/infra
         env:
           POSTGRES_PASSWORD: ${{ secrets.POSTGRES_PASSWORD }}
         run: |
-          Write-Host "Deploying infrastructure changes only (no image rebuild)"
-          ./deploy-status-app.ps1 -Environment dev
+          Write-Host "Deploying infrastructure changes only"
+          pwsh ./deploy-status-app.ps1 -Environment dev
 
-      # Optional: Keep App Service on current image (no change)
-      - name: Confirm current image tag
+      - name: Confirm current image
         run: |
-          CURRENT=$(az webapp config container show --name statusapp-dev --resource-group rg-dev-statusapp --query docker-custom-image-name --query "dockerCustomImageName" -o tsv)
+          CURRENT=$(az webapp config container show --name statusapp-dev --resource-group rg-dev-statusapp --query 'dockerCustomImageName' -o tsv)
           echo "App Service still running: $CURRENT"
