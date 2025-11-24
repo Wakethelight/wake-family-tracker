@@ -11,6 +11,14 @@ app = Flask(__name__)
 # Build connection string from environment variables
 db_url = os.getenv("DB_CONNECTION_STRING", "postgresql://postgres:password@localhost/statusdb")
 
+# For Azure: Fetch from Key Vault if in prod
+if os.getenv("AZURE_ENVIRONMENT"):  # Or check for WEBSITE_SITE_NAME env in App Service
+    from azure.identity import DefaultAzureCredential
+    from azure.keyvault.secrets import SecretClient
+    credential = DefaultAzureCredential()
+    kv_client = SecretClient(vault_url=os.getenv("KEY_VAULT_URL"), credential=credential)
+    db_url = kv_client.get_secret("db-connection-string").value
+
 engine = create_engine(db_url)
 SessionLocal = sessionmaker(bind=engine)
 
@@ -57,16 +65,18 @@ def index():
 
     return render_template("index.html")
 
+# Routes (unchanged, but tweak query for latest per user if desired)
 @app.route("/dashboard")
 def dashboard():
     session = SessionLocal()
-    statuses = session.query(UserStatus).order_by(UserStatus.updated_at.desc()).all()
+    # For latest per user: Use subquery or DISTINCT ON (Postgres-specific)
+    statuses = session.query(UserStatus).distinct(UserStatus.user_id).order_by(UserStatus.user_id, UserStatus.updated_at.desc()).all()  # Add this for unique latest
 
-    # Count summary
+    # Summary: Tweak to count unique
     summary = {
-        "remote": session.query(UserStatus).filter_by(status="remote").count(),
-        "home": session.query(UserStatus).filter_by(status="home").count(),
-        "office": session.query(UserStatus).filter_by(status="office").count()
+        "remote": session.query(UserStatus).distinct(UserStatus.user_id).filter(UserStatus.status=="remote").count(),
+        "home": session.query(UserStatus).distinct(UserStatus.user_id).filter(UserStatus.status=="home").count(),
+        "office": session.query(UserStatus).distinct(UserStatus.user_id).filter(UserStatus.status=="office").count()
     }
     
     last_updated = None
@@ -80,3 +90,7 @@ def dashboard():
 
     session.close()
     return render_template("dashboard.html", statuses=statuses, last_updated=last_updated)
+
+# Add for local dev
+if __name__ == "__main__":
+    app.run(debug=True, host="0.0.0.0", port=int(os.getenv("PORT", 8000)))

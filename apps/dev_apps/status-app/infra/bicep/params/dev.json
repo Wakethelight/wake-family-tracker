@@ -1,0 +1,23 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentParameters.json#",
+  "contentVersion": "1.0.0.0",
+  "parameters": {
+    "environment": { "value": "dev" },
+    "appName": { "value": "statusapp" },
+    "location": { "value": "eastus" },
+
+    "acrName": { "value": "acrwakedev" },
+    "vaultName": { "value": "kv-wake-dev" },
+
+    "appServicePlanSku": { "value": "B1" },
+    "dnsLabel": { "value": "statusdb-dev-01" },
+
+    // NEW: ACI-specific config (you control everything here)
+    "aciContainerGroupName": { "value": "statusdb-aci" },
+    "postgresImage": { "value": "postgres:15-alpine" },
+    "postgresCpu": { "value": 1.0 },
+    "postgresMemoryGb": { "value": 1.5 },
+    "postgresDbName": { "value": "statusdb" },
+    "postgresUser": { "value": "postgres" }
+  }
+}

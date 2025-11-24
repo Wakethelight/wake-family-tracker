@@ -1,0 +1,62 @@
+name: 02 - Deploy Status App (Dev)
+
+on:
+  workflow_run:
+    workflows: ["01 - Build & Push Status App Image"]
+    types: [ completed ]
+    branches: [ main ]
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    if: ${{ github.event.workflow_run.conclusion == 'success' }}
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        shell: pwsh
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Azure Login (OIDC)
+        uses: azure/login@v2
+        with:
+          client-id: ${{ vars.AZURE_CLIENT_ID }}
+          tenant-id: ${{ vars.AZURE_TENANT_ID }}
+          subscription-id: ${{ vars.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Get Image Tag from Build Workflow
+        uses: actions/github-script@v7
+        id: get-tag
+        with:
+          script: |
+            const runs = await github.rest.actions.listWorkflowRuns({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              workflow_id: '01-build-push.yml',
+              branch: 'main',
+              event: 'push',
+              status: 'success'
+            });
+            const tag = runs.data.workflow_runs[0]?.head_sha?.substring(0,7) || 'unknown';
+            return tag;
+
+      - name: Deploy Infrastructure + Upload init.sql + Set KV Secret
+        working-directory: apps/dev apps/status-app
+        env:
+          POSTGRES_PASSWORD: ${{ secrets.POSTGRES_PASSWORD }}
+        run: |
+          $tag = "${{ steps.get-tag.outputs.result }}"
+          Write-Host "Deploying infra using image tag: $tag"
+          ./deploy.ps1 -Environment dev
+
+      - name: Update App Service to Latest Image
+        run: |
+          $tag = "${{ steps.get-tag.outputs.result }}"
+          az webapp config container set `
+            --name statusapp-dev `
+            --resource-group rg-dev-statusapp `
+            --docker-custom-image-name ${{ vars.ACR_NAME }}.azurecr.io/status-app:$tag `
+            --docker-registry-server-url https://${{ vars.ACR_NAME }}.azurecr.io
+          Write-Host "App Service now running image tag: $tag"

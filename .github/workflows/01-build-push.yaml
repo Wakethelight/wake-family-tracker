@@ -1,0 +1,67 @@
+name: 01 - Build & Push Status App Image
+
+on:
+  push:
+    branches: [ main ]
+    tags: [ 'v*.*.*' ]                     # e.g. v1.0.0
+    paths:
+      - 'apps/dev apps/status-app/**'      # ← Only trigger on changes here
+  workflow_dispatch:                       # Manual run button
+
+jobs:
+  build-and-push:
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+      contents: read
+
+    outputs:
+      image_tag: ${{ steps.build.outputs.image_tag }}
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Azure Login (OIDC)
+        uses: azure/login@v2
+        with:
+          client-id: ${{ vars.AZURE_CLIENT_ID }}
+          tenant-id: ${{ vars.AZURE_TENANT_ID }}
+          subscription-id: ${{ vars.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Login to ACR
+        run: az acr login --name ${{ vars.ACR_NAME }}
+
+      - name: Build and Push Docker Image
+        id: build
+        run: |
+          cd "apps/dev apps/status-app"
+
+          IMAGE="${{ vars.ACR_NAME }}.azurecr.io/status-app"
+          SHA_TAG=$(echo ${{ github.sha }} | cut -c1-7)
+          TAG=$SHA_TAG
+
+          # If this is a git tag (e.g. v1.2.3), use that too
+          if [[ ${{ github.ref }} == refs/tags/v* ]]; then
+            TAG=${GITHUB_REF#refs/tags/}
+            echo "Tagged release: $TAG"
+          fi
+
+          docker build -t $IMAGE:latest -t $IMAGE:$SHA_TAG .
+          if [[ $TAG != $SHA_TAG ]]; then
+            docker tag $IMAGE:latest $IMAGE:$TAG
+          fi
+
+          docker push $IMAGE:latest
+          docker push $IMAGE:$SHA_TAG
+          if [[ $TAG != $SHA_TAG ]]; then
+            docker push $IMAGE:$TAG
+          fi
+
+          echo "image_tag=$SHA_TAG" >> $GITHUB_OUTPUT
+          echo "Built and pushed: $IMAGE:$SHA_TAG"
+
+      # Make the short SHA available to the deploy workflow
+      - name: Output Image Tag
+        run: |
+          echo "IMAGE_TAG=${{ steps.build.outputs.image_tag }}" >> $GITHUB_ENV
