@@ -4,28 +4,29 @@ param(
     [string]$Environment = $null # Optional: pass "dev" or "prod", otherwise auto-detect
 )
 # ================================
-# 1. DETERMINE ENVIRONMENT — CI + Local friendly, ZERO prompts
+# 1. DETERMINE ENVIRONMENT — FINAL VERSION (works everywhere)
 # ================================
 if (-not $Environment) {
     if ($env:GITHUB_WORKSPACE) {
-        # CI: infer from the folder structure
-        $relative = (Get-Location).Path.Replace($env:GITHUB_WORKSPACE, "").TrimStart('/\')
+        # CI: Look for the script's own location in the repo
+        $scriptDir = $PSScriptRoot
+        $relative = $scriptDir.Replace($env:GITHUB_WORKSPACE, "").TrimStart('/\')
         if ($relative -like "apps/dev_apps/*")     { $Environment = "dev" }
         elseif ($relative -like "apps/prod_apps/*") { $Environment = "prod" }
         else {
-            Write-Error "Cannot auto-detect environment from path: $relative"
+            Write-Error "Cannot auto-detect environment. Script path: $relative"
             exit 1
         }
     }
     else {
-        # Local developer running the script → default to dev
+        # Local run → default to dev
         $Environment = "dev"
     }
 }
-
+Write-Host "Deploying to environment: $Environment" -ForegroundColor Green
 # Optional: allow override from command line (great for local prod testing)
 # Example: pwsh deploy-status-app.ps1 -Environment prod
-Write-Host "Deploying to environment: $Environment" -ForegroundColor Green
+
 # ================================
 # 2. ENVIRONMENT CONFIG (no files!)
 # ================================
@@ -160,12 +161,35 @@ if (-not $principalId) {
         -ErrorAction Continue
     Write-Host "Granted 'get' secrets permission to $appIdentity on vault $($config.VaultName)" -ForegroundColor Green
 }
+
+# ================================
+# 14. ENSURE APP SERVICE IS RUNNING
+# ================================
+Write-Host "Ensuring App Service is running..." -ForegroundColor Yellow
+
+$app = Get-AzWebApp -ResourceGroupName $resourceGroupName -Name $appServiceName -ErrorAction Stop
+
+if ($app.State -eq "Stopped") {
+    Write-Host "App Service is currently STOPPED → starting it now"
+    Start-AzWebApp -ResourceGroupName $resourceGroupName -Name $appServiceName
+    Write-Host "App Service STARTED successfully!" -ForegroundColor Green
+}
+elseif ($app.State -eq "Running") {
+    Write-Host "App Service already RUNNING" -ForegroundColor Green
+}
+else {
+    Write-Host "App Service state: $($app.State)" -ForegroundColor Cyan
+}
+
 # ================================
 # 13. FINAL SUCCESS
 # ================================
 Write-Host "DEPLOYMENT COMPLETED SUCCESSFULLY!" -ForegroundColor Green
 Write-Host "App URL: https://$appServiceName.azurewebsites.net" -ForegroundColor Cyan
 # Make these available to GitHub Actions (modern syntax)
+
 $appServiceOutput = $deployment.Outputs.appServiceName.Value
 echo "APP_SERVICE_NAME=$appServiceOutput" >> $env:GITHUB_OUTPUT
 echo "resourceGroupName=$resourceGroupName" >> $env:GITHUB_OUTPUT
+
+
