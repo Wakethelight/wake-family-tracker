@@ -67,9 +67,7 @@ jobs:
         with:
           azPSVersion: "latest"
           inlineScript: |
-            # Run the script inline — cd to working dir first
-            Set-Location -Path "apps/dev_apps/status-app/infra"
-            & ./deploy-status-app.ps1
+            & "$env:GITHUB_WORKSPACE/apps/dev_apps/status-app/infra/deploy-status-app.ps1"
         env:
           POSTGRES_PASSWORD: ${{ secrets.POSTGRES_PASSWORD }}
           AZURE_TENANT_ID: ${{ vars.AZURE_TENANT_ID }}
