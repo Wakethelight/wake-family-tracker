@@ -79,6 +79,7 @@ def dashboard():
         "office": session.query(UserStatus).distinct(UserStatus.user_id).filter(UserStatus.status=="office").count()
     }
     
+    #show last updated
     last_updated = None
     if statuses:
         latest = statuses[0].updated_at
