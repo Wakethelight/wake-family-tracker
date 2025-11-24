@@ -20,7 +20,7 @@ jobs:
       
       - name: Install Az
         run: pwsh -c "Install-Module Az -Force -AllowClobber"
-        
+
       - name: Azure Login (OIDC)
         uses: azure/login@v2
         with:
@@ -45,8 +45,10 @@ jobs:
         working-directory: apps/dev_apps/status-app/infra
         env:
           POSTGRES_PASSWORD: ${{ secrets.POSTGRES_PASSWORD }}
+          AZURE_TENANT_ID: ${{ vars.AZURE_TENANT_ID }}
+          AZURE_SUBSCRIPTION_ID: ${{ vars.AZURE_SUBSCRIPTION_ID }}
         run: |
-          pwsh ./deploy-status-app.ps1 -Environment dev
+          pwsh -NoProfile -ExecutionPolicy Bypass -Command "& ./deploy-status-app.ps1 -Environment dev"
 
       # Update App Service
       - name: Update App Service Image
