@@ -1,84 +1,73 @@
 [CmdletBinding()]
 param(
     [ValidateSet("dev","prod")]
-    [string]$Environment = $null  # Optional: pass "dev" or "prod", otherwise auto-detect
+    [string]$Environment = $null # Optional: pass "dev" or "prod", otherwise auto-detect
 )
-
 # ================================
 # 1. AUTO-DETECT ENVIRONMENT
 # ================================
 if (-not $Environment -and $env:GITHUB_WORKSPACE) {
     $currentPath = (Get-Location).Path
-    if ($currentPath -like "*dev_apps*")     { $Environment = "dev" }
+    if ($currentPath -like "*dev_apps*") { $Environment = "dev" }
     elseif ($currentPath -like "*prod_apps*") { $Environment = "prod" }
 }
-
 # Local fallback prompt
 if (-not $Environment) {
     $envInput = Read-Host "Enter environment (dev/prod) [default: dev]"
     $Environment = if ($envInput) { $envInput } else { "dev" }
 }
-
 Write-Host "Deploying to environment: $Environment" -ForegroundColor Green
-
 # ================================
 # 2. ENVIRONMENT CONFIG (no files!)
 # ================================
 $envConfig = @{
-    dev  = @{
+    dev = @{
         ResourceGroupPrefix = "rg-dev"
-        Location            = "eastus"
-        Tags                = @{ Environment="Development"; Owner="Chris"; CostCenter="DEV-001" }
-        AppServiceSuffix    = "-dev"
-        VaultName           = "kv-wake-dev"
-        AcrName             = "acrwakedev01"
+        Location = "eastus"
+        Tags = @{ Environment="Development"; Owner="Chris"; CostCenter="DEV-001" }
+        AppServiceSuffix = "-dev"
+        VaultName = "kv-wake-dev"
+        AcrName = "acrwakedev01"
     }
     prod = @{
         ResourceGroupPrefix = "rg-prod"
-        Location            = "eastus"
-        Tags                = @{ Environment="Production"; Owner="Chris"; CostCenter="PROD-001" }
-        AppServiceSuffix    = ""
-        VaultName           = "kv-wake-prod"   # change when you have it
-        AcrName             = "acrwakeprod01"   # change when you have it
+        Location = "eastus"
+        Tags = @{ Environment="Production"; Owner="Chris"; CostCenter="PROD-001" }
+        AppServiceSuffix = ""
+        VaultName = "kv-wake-prod" # change when you have it
+        AcrName = "acrwakeprod01" # change when you have it
     }
 }
-
 $config = $envConfig[$Environment]
-
 # ================================
 # 3. REQUIRED SECRETS / VARIABLES
 # ================================
-$TenantId         = $env:AZURE_TENANT_ID
-$SubscriptionId   = $env:AZURE_SUBSCRIPTION_ID
+$TenantId = $env:AZURE_TENANT_ID
+$SubscriptionId = $env:AZURE_SUBSCRIPTION_ID
 $PostgresPassword = $env:POSTGRES_PASSWORD
-
 if (-not $TenantId -or -not $SubscriptionId) {
     Write-Error "AZURE_TENANT_ID and AZURE_SUBSCRIPTION_ID must be set in GitHub Secrets/Variables"
     exit 1
 }
-
 # ================================
-# 4. AZURE LOGIN & CONTEXT
+# 4. AZURE LOGIN & CONTEXT (Actions handles this!)
 # ================================
 if ($env:GITHUB_ACTIONS) {
-    Write-Host "Running in GitHub Actions — using OIDC"
+    Write-Host "Running in GitHub Actions — using OIDC (Az context auto-set)"
+    # No Connect-AzAccount or Set-AzContext needed — OIDC session is active
 } else {
     Connect-AzAccount -Tenant $TenantId -Subscription $SubscriptionId -UseDeviceAuthentication
+    Set-AzContext -Tenant $TenantId -Subscription $SubscriptionId | Out-Null
 }
-
-Set-AzContext -Tenant $TenantId -Subscription $SubscriptionId | Out-Null
-
 # ================================
 # 5. RESOURCE NAMES
 # ================================
-$appName           = "statusapp"
+$appName = "statusapp"
 $resourceGroupName = "$($config.ResourceGroupPrefix)-$appName"
-$appServiceName    = "$appName$($config.AppServiceSuffix)"  # statusapp-dev or statusapp
-
+$appServiceName = "$appName$($config.AppServiceSuffix)" # statusapp-dev or statusapp
 Write-Host "Resource Group : $resourceGroupName"
-Write-Host "App Service    : $appServiceName"
-Write-Host "Key Vault      : $($config.VaultName)"
-
+Write-Host "App Service : $appServiceName"
+Write-Host "Key Vault : $($config.VaultName)"
 # ================================
 # 6. CREATE RG IF MISSING
 # ================================
@@ -86,7 +75,6 @@ if (-not (Get-AzResourceGroup -Name $resourceGroupName -ErrorAction SilentlyCont
     New-AzResourceGroup -Name $resourceGroupName -Location $config.Location -Tag $config.Tags | Out-Null
     Write-Host "Created resource group $resourceGroupName"
 }
-
 # ================================
 # 7. POSTGRES PASSWORD (secure handling)
 # ================================
@@ -101,15 +89,12 @@ if ($env:GITHUB_ACTIONS) {
     $postgresPasswordPlain = [Runtime.InteropServices.Marshal]::PtrToStringAuto(
         [Runtime.InteropServices.Marshal]::SecureStringToBSTR($sec))
 }
-
 # ================================
 # 8. DEPLOY BICEP
 # ================================
-$bicepFile     = Join-Path $PSScriptRoot "bicep/main.bicep"
+$bicepFile = Join-Path $PSScriptRoot "bicep/main.bicep"
 $parameterFile = Join-Path $PSScriptRoot "bicep/params/$Environment.json"
-
 $deploymentName = "statusapp-deploy-$(Get-Date -Format 'yyyyMMdd-HHmmss')"
-
 Write-Host "Deploying Bicep with deployment name: $deploymentName"
 New-AzResourceGroupDeployment `
     -Name $deploymentName `
@@ -118,33 +103,27 @@ New-AzResourceGroupDeployment `
     -TemplateParameterFile $parameterFile `
     -postgresPassword (ConvertTo-SecureString $postgresPasswordPlain -AsPlainText -Force) `
     -Verbose
-
 # ================================
 # 9. GET DEPLOYMENT OUTPUTS
 # ================================
-$deployment       = Get-AzResourceGroupDeployment -ResourceGroupName $resourceGroupName -Name $deploymentName
-$dbFqdn           = $deployment.Outputs.dbFqdn.Value
-$storageName      = $deployment.Outputs.storageAccountName.Value
-$storageKey       = $deployment.Outputs.storageAccountKey.Value
-
+$deployment = Get-AzResourceGroupDeployment -ResourceGroupName $resourceGroupName -Name $deploymentName
+$dbFqdn = $deployment.Outputs.dbFqdn.Value
+$storageName = $deployment.Outputs.storageAccountName.Value
+$storageKey = $deployment.Outputs.storageAccountKey.Value
 Write-Host "DB FQDN: $dbFqdn"
 Write-Host "Storage Account: $storageName"
-
 # ================================
 # 10. UPLOAD init.sql
 # ================================
 $ctx = New-AzStorageContext -StorageAccountName $storageName -StorageAccountKey $storageKey
 $initSqlSource = Join-Path $PSScriptRoot "db/init.sql"
-
 Set-AzStorageFileContent `
     -ShareName "init-sql" `
     -Context $ctx `
     -Path "init.sql" `
     -Source $initSqlSource `
     -Force
-
 Write-Host "Uploaded init.sql"
-
 # ================================
 # 11. WRITE CONNECTION STRING TO KV
 # ================================
@@ -153,37 +132,31 @@ Set-AzKeyVaultSecret `
     -VaultName $config.VaultName `
     -Name "db-connection-string" `
     -SecretValue (ConvertTo-SecureString $connString -AsPlainText -Force)
-
 Write-Host "Updated Key Vault secret 'db-connection-string'"
-
 # ================================
 # 12. GRANT APP SERVICE IDENTITY ACCESS TO KEY VAULT (cross-region safe)
 # ================================
 Write-Host "Granting App Service identity access to Key Vault..." -ForegroundColor Yellow
-
 $appIdentity = $deployment.Outputs.appServiceName.Value
 $principalId = (Get-AzWebApp -ResourceGroupName $resourceGroupName -Name $appIdentity).Identity.PrincipalId
-
 if (-not $principalId) {
-    Write-Error "Could not get managed identity PrincipalId — skipping KV access"
+    Write-Warning "Could not get managed identity PrincipalId — skipping KV access"
 } else {
     # This works even if KV is in eastus and app is in centralus
     Set-AzKeyVaultAccessPolicy `
         -VaultName $config.VaultName `
         -ObjectId $principalId `
         -PermissionsToSecrets get `
-        -BypassObjectIdValidation  # ← this is the magic for cross-region
+        -BypassObjectIdValidation # ← this is the magic for cross-region
         -ErrorAction Continue
-
     Write-Host "Granted 'get' secrets permission to $appIdentity on vault $($config.VaultName)" -ForegroundColor Green
 }
-
 # ================================
 # 13. FINAL SUCCESS
 # ================================
 Write-Host "DEPLOYMENT COMPLETED SUCCESSFULLY!" -ForegroundColor Green
 Write-Host "App URL: https://$appServiceName.azurewebsites.net" -ForegroundColor Cyan
-
-# Make these available to GitHub Actions
-Write-Host "##vso[task.setvariable variable=APP_SERVICE_NAME;isOutput=true]$($deployment.Outputs.appServiceName.Value)"
-Write-Host "##vso[task.setvariable variable=RESOURCE_GROUP_NAME;isOutput=true]$resourceGroupName"
+# Make these available to GitHub Actions (modern syntax)
+$appServiceOutput = $deployment.Outputs.appServiceName.Value
+echo "APP_SERVICE_NAME=$appServiceOutput" >> $env:GITHUB_OUTPUT
+echo "resourceGroupName=$resourceGroupName" >> $env:GITHUB_OUTPUT
