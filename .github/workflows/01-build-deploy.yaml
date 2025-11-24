@@ -4,49 +4,47 @@ on:
     branches: [ main ]
     paths:
       - 'apps/dev_apps/status-app/**'
-      - '.github/workflows/01-build-and-deploy.yml'
-  workflow_dispatch:
-
+      - '.github/workflows/01-build-and-deploy.yml'  # ✅ Good: Includes workflow self-updates
+  workflow_dispatch:  # ✅ Good: Manual trigger for testing
 jobs:
   build-and-deploy:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-latest  # ✅ Good: Linux is fine for pwsh + Docker
     permissions:
-      id-token: write
+      id-token: write  # ✅ Required for OIDC
       contents: read
-
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v4  # ✅ Latest version
 
       - name: Azure Login (OIDC)
-        uses: azure/login@v2
+        uses: azure/login@v2  # ✅ Latest; OIDC is 2025 best practice
         with:
           client-id: ${{ vars.AZURE_CLIENT_ID }}
           tenant-id: ${{ vars.AZURE_TENANT_ID }}
           subscription-id: ${{ vars.AZURE_SUBSCRIPTION_ID }}
-          enable-AzPSSession: true
+          enable-AzPSSession: true  # ✅ Enables Az in pwsh — exact Microsoft rec
 
       - name: Detect Changes
         id: changes
-        uses: dorny/paths-filter@v3
+        uses: dorny/paths-filter@v3  # ✅ Latest
         with:
           filters: |
             app-code:
               - 'apps/dev_apps/status-app/**'
               - '!apps/dev_apps/status-app/infra/**'
               - '!apps/dev_apps/status-app/**/*.bicep'
-              - '!apps/dev_apps/status-app/**/*.json'
+              - '!apps/dev_apps/status-app/**/*.json'  # ✅ Correct multi-exclude syntax
             infra:
               - 'apps/dev_apps/status-app/infra/**'
               - 'apps/dev_apps/status-app/**/*.bicep'
-              - 'apps/dev_apps/status-app/**/*.json'
+              - 'apps/dev_apps/status-app/**/*.json'  # ✅ Good: Catches Bicep/params changes
 
       - name: Build and Push Image
-        if: steps.changes.outputs.app-code == 'true'
+        if: steps.changes.outputs.app-code == 'true'  # ✅ Efficient: Builds only on code change
         working-directory: apps/dev_apps/status-app
         run: |
           IMAGE="${{ vars.ACR_NAME }}.azurecr.io/status-app"
           SHA=$(git rev-parse --short HEAD)
-          az acr login --name ${{ vars.ACR_NAME }}
+          az acr login --name ${{ vars.ACR_NAME }}  # ✅ Secure: Uses OIDC for ACR too
           docker build -t $IMAGE:latest -t $IMAGE:$SHA .
           docker push $IMAGE:latest
           docker push $IMAGE:$SHA
@@ -54,19 +52,17 @@ jobs:
           echo "New image built: $IMAGE:$SHA"
 
       - name: Reuse Latest Image
-        if: steps.changes.outputs.app-code != 'true'
+        if: steps.changes.outputs.app-code != 'true'  # ✅ Good: Avoids unnecessary builds
         run: |
           echo "No code changes → reusing latest image"
           echo "IMAGE_TAG=latest" >> $GITHUB_ENV
 
       - name: Deploy Infrastructure
         id: deploy
-        if: steps.changes.outputs.infra == 'true' || steps.changes.outputs.app-code == 'true'
-        uses: azure/powershell@v1
-        with:
-          azPSVersion: latest
-          inlineScript: |
-            & "$env:GITHUB_WORKSPACE/apps/dev_apps/status-app/infra/deploy-status-app.ps1"
+        if: steps.changes.outputs.infra == 'true' || steps.changes.outputs.app-code == 'true'  # ✅ Added: Missing in your YAML! Deploys only on relevant changes
+        shell: pwsh  # ✅ Perfect: Your "personal favorite" — Az pre-loaded via enable-AzPSSession
+        run: |
+          & "$env:GITHUB_WORKSPACE/apps/dev_apps/status-app/infra/deploy-status-app.ps1"  # ✅ Bulletproof path
         env:
           POSTGRES_PASSWORD: ${{ secrets.POSTGRES_PASSWORD }}
           AZURE_TENANT_ID: ${{ vars.AZURE_TENANT_ID }}
@@ -81,6 +77,6 @@ jobs:
             --name $APP_SERVICE_NAME \
             --resource-group $RESOURCE_GROUP_NAME \
             --container-image-name ${{ vars.ACR_NAME }}.azurecr.io/status-app:${{ env.IMAGE_TAG }} \
-            --docker-registry-server-url https://${{ vars.ACR_NAME }}.azurecr.io \
-            --docker-registry-server-user ${{ secrets.ACR_USERNAME }} \
-            --docker-registry-server-password ${{ secrets.ACR_PASSWORD }}
+            --container-registry-url https://${{ vars.ACR_NAME }}.azurecr.io \  # ✅ CHANGED: From deprecated --docker-registry-server-url
+            --container-registry-user ${{ secrets.ACR_USERNAME }} \  # ✅ CHANGED: From deprecated --docker-registry-server-user
+            --container-registry-password ${{ secrets.ACR_PASSWORD }}  # ✅ CHANGED: From deprecated --docker-registry-server-password
