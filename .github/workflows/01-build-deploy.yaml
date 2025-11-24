@@ -1,4 +1,4 @@
-name: 01 - Build & Deploy on Code Change
+name: 01 - Build & Deploy Status App
 on:
   push:
     branches: [ main ]
@@ -6,41 +6,42 @@ on:
       - 'apps/dev_apps/status-app/**'
       - '.github/workflows/01-build-and-deploy.yml'
   workflow_dispatch:
+
 jobs:
   build-and-deploy:
     runs-on: ubuntu-latest
     permissions:
       id-token: write
       contents: read
+
     steps:
       - uses: actions/checkout@v4
 
-      # Azure Login (fixes both az CLI and Az PowerShell)
       - name: Azure Login (OIDC)
         uses: azure/login@v2
         with:
           client-id: ${{ vars.AZURE_CLIENT_ID }}
           tenant-id: ${{ vars.AZURE_TENANT_ID }}
           subscription-id: ${{ vars.AZURE_SUBSCRIPTION_ID }}
-          enable-AzPSSession: true  # Enables Az module for PowerShell sessions
+          enable-AzPSSession: true
 
-      # Optional: Install jq for any future JSON output parsing
-      - name: Install jq
-        run: sudo apt-get update && sudo apt-get install -y jq
-
-      # THIS IS THE SMART FILTER — ONLY BUILD IF CODE CHANGED
-      - name: Check if app code changed (excludes infra)
+      - name: Detect Changes
         id: changes
         uses: dorny/paths-filter@v3
         with:
           filters: |
-            code:
+            app-code:
               - 'apps/dev_apps/status-app/**'
               - '!apps/dev_apps/status-app/infra/**'
+              - '!apps/dev_apps/status-app/**/*.bicep'
+              - '!apps/dev_apps/status-app/**/*.json'
+            infra:
+              - 'apps/dev_apps/status-app/infra/**'
+              - 'apps/dev_apps/status-app/**/*.bicep'
+              - 'apps/dev_apps/status-app/**/*.json'
 
-      # BUILD & PUSH ONLY IF CODE CHANGED
-      - name: Build and Push Image (only on code change)
-        if: steps.changes.outputs.code == 'true'
+      - name: Build and Push Image
+        if: steps.changes.outputs.app-code == 'true'
         working-directory: apps/dev_apps/status-app
         run: |
           IMAGE="${{ vars.ACR_NAME }}.azurecr.io/status-app"
@@ -50,22 +51,20 @@ jobs:
           docker push $IMAGE:latest
           docker push $IMAGE:$SHA
           echo "IMAGE_TAG=$SHA" >> $GITHUB_ENV
-          echo "Built and pushed new image: $IMAGE:$SHA"
+          echo "New image built: $IMAGE:$SHA"
 
-      # REUSE LAST IMAGE IF NO CODE CHANGE
-      - name: Reuse existing image (no code change)
-        if: steps.changes.outputs.code != 'true'
+      - name: Reuse Latest Image
+        if: steps.changes.outputs.app-code != 'true'
         run: |
-          echo "No app code changes detected — reusing existing image"
+          echo "No code changes → reusing latest image"
           echo "IMAGE_TAG=latest" >> $GITHUB_ENV
 
-      # DEPLOY INFRA (always runs — fast if nothing changed)
-      # NOW RUNS INSIDE azure/powershell@v1 — Az module auto-loaded!
       - name: Deploy Infrastructure
         id: deploy
+        if: steps.changes.outputs.infra == 'true' || steps.changes.outputs.app-code == 'true'
         uses: azure/powershell@v1
         with:
-          azPSVersion: "latest"
+          azPSVersion: latest
           inlineScript: |
             & "$env:GITHUB_WORKSPACE/apps/dev_apps/status-app/infra/deploy-status-app.ps1"
         env:
@@ -73,11 +72,10 @@ jobs:
           AZURE_TENANT_ID: ${{ vars.AZURE_TENANT_ID }}
           AZURE_SUBSCRIPTION_ID: ${{ vars.AZURE_SUBSCRIPTION_ID }}
 
-      # UPDATE APP SERVICE TO CURRENT IMAGE
-      - name: Update App Service Image
+      - name: Update App Service Container
         env:
           APP_SERVICE_NAME: ${{ steps.deploy.outputs.APP_SERVICE_NAME }}
-          RESOURCE_GROUP_NAME: ${{ steps.deploy.outputs.RESOURCE_GROUP_NAME }}
+          RESOURCE_GROUP_NAME: ${{ steps.deploy.outputs.resourceGroupName }}
         run: |
           az webapp config container set \
             --name $APP_SERVICE_NAME \
