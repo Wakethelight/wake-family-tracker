@@ -28,6 +28,15 @@ jobs:
           client-id: ${{ vars.AZURE_CLIENT_ID }}
           tenant-id: ${{ vars.AZURE_TENANT_ID }}
           subscription-id: ${{ vars.AZURE_SUBSCRIPTION_ID }}
+      - name: Import Azure context into PowerShell (critical!)
+        run: |
+          # This turns the az login (OIDC) into a PowerShell login
+          az account get-access-token --resource=https://management.azure.com/ | ConvertFrom-Json | ForEach-Object {
+            $token = $_.accessToken
+            $context = Import-AzContext -AccessToken $token
+            Write-Host "PowerShell context set to subscription: $($context.Subscription.Id)"
+          }
+        shell: pwsh
 
       # Deploy Infra — exact file name + path
       - name: Deploy Infrastructure Only

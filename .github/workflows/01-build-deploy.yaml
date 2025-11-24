@@ -26,7 +26,13 @@ jobs:
         with:
           client-id: ${{ vars.AZURE_CLIENT_ID }}
           tenant-id: ${{ vars.AZURE_TENANT_ID }}
-          subscription-id: ${{ vars.AZURE_SUBSCRIPTION_ID }}
+          subscription-id: ${{ vars.AZURE_SUBSCRIPTION_ID }}  
+      - name: Import Azure context into PowerShell (critical!)
+        run: |
+          $token = (az account get-access-token --resource=https://management.azure.com/ --query accessToken -o tsv)
+          $context = Import-AzContext -AccessToken $token
+          Write-Host "PowerShell logged in as: $($context.Account.Id)"
+        shell: pwsh
 
       # Build & Push Image
       - name: Build and Push Image

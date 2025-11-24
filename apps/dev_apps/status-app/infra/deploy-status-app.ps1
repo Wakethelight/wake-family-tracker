@@ -128,7 +128,7 @@ $storageKey       = $deployment.Outputs.storageAccountKey.Value
 # 10. UPLOAD init.sql
 # ================================
 $ctx = New-AzStorageContext -StorageAccountName $storageName -StorageAccountKey $storageKey
-$initSqlSource = Join-Path $PSScriptRoot "../db/init.sql"
+$initSqlSource = Join-Path $PSScriptRoot "db/init.sql"
 
 Set-AzStorageFileContent `
     -ShareName "init-sql" `
