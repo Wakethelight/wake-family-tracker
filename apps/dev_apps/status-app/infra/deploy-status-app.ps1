@@ -143,32 +143,14 @@ Set-AzKeyVaultSecret `
     -Name "db-connection-string" `
     -SecretValue (ConvertTo-SecureString $connString -AsPlainText -Force)
 Write-Host "Updated Key Vault secret 'db-connection-string'"
-# ================================
-# 12. GRANT APP SERVICE IDENTITY ACCESS TO KEY VAULT (cross-region safe)
-# ================================
-Write-Host "Granting App Service identity access to Key Vault..." -ForegroundColor Yellow
-$appIdentity = $deployment.Outputs.appServiceName.Value
-$principalId = (Get-AzWebApp -ResourceGroupName $resourceGroupName -Name $appIdentity).Identity.PrincipalId
-if (-not $principalId) {
-    Write-Warning "Could not get managed identity PrincipalId — skipping KV access"
-} else {
-    # This works even if KV is in eastus and app is in centralus
-    Set-AzKeyVaultAccessPolicy `
-        -VaultName $config.VaultName `
-        -ObjectId $principalId `
-        -PermissionsToSecrets get `
-        -BypassObjectIdValidation # ← this is the magic for cross-region
-        -ErrorAction Continue
-    Write-Host "Granted 'get' secrets permission to $appIdentity on vault $($config.VaultName)" -ForegroundColor Green
-}
+
+# REMOVED: Section 12 (Grant access) — Now handled in Bicep!
 
 # ================================
-# 14. ENSURE APP SERVICE IS RUNNING
+# 12. ENSURE APP SERVICE IS RUNNING (renumber from 14)
 # ================================
 Write-Host "Ensuring App Service is running..." -ForegroundColor Yellow
-
 $app = Get-AzWebApp -ResourceGroupName $resourceGroupName -Name $appServiceName -ErrorAction Stop
-
 if ($app.State -eq "Stopped") {
     Write-Host "App Service is currently STOPPED → starting it now"
     Start-AzWebApp -ResourceGroupName $resourceGroupName -Name $appServiceName
@@ -186,10 +168,7 @@ else {
 # ================================
 Write-Host "DEPLOYMENT COMPLETED SUCCESSFULLY!" -ForegroundColor Green
 Write-Host "App URL: https://$appServiceName.azurewebsites.net" -ForegroundColor Cyan
-# Make these available to GitHub Actions (modern syntax)
-
+# Outputs unchanged
 $appServiceOutput = $deployment.Outputs.appServiceName.Value
 echo "APP_SERVICE_NAME=$appServiceOutput" >> $env:GITHUB_OUTPUT
 echo "resourceGroupName=$resourceGroupName" >> $env:GITHUB_OUTPUT
-
-
