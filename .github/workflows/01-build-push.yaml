@@ -5,7 +5,7 @@ on:
     branches: [ main ]
     tags: [ 'v*.*.*' ]                     # e.g. v1.0.0
     paths:
-      - 'apps/dev apps/status-app/**'      # ← Only trigger on changes here
+      - 'apps/dev_apps/status-app/**'      # ← Only trigger on changes here
   workflow_dispatch:                       # Manual run button
 
 jobs:
@@ -35,7 +35,7 @@ jobs:
       - name: Build and Push Docker Image
         id: build
         run: |
-          cd "apps/dev apps/status-app"
+          cd "apps/dev_apps/status-app"
 
           IMAGE="${{ vars.ACR_NAME }}.azurecr.io/status-app"
           SHA_TAG=$(echo ${{ github.sha }} | cut -c1-7)

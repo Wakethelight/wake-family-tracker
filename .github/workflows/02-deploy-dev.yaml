@@ -43,7 +43,7 @@ jobs:
             return tag;
 
       - name: Deploy Infrastructure + Upload init.sql + Set KV Secret
-        working-directory: apps/dev apps/status-app
+        working-directory: apps/dev_apps/status-app
         env:
           POSTGRES_PASSWORD: ${{ secrets.POSTGRES_PASSWORD }}
         run: |

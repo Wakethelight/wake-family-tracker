@@ -12,11 +12,11 @@
     "appServicePlanSku": { "value": "B1" },
     "dnsLabel": { "value": "statusdb-dev-01" },
 
-    // NEW: ACI-specific config (you control everything here)
+    "commentACI": { "value": "ACI-specific config (you control everything here)"},
     "aciContainerGroupName": { "value": "statusdb-aci" },
     "postgresImage": { "value": "postgres:15-alpine" },
-    "postgresCpu": { "value": 1.0 },
-    "postgresMemoryGb": { "value": 1.5 },
+    "postgresCpu": { "value": 1 },
+    "postgresMemoryGb": { "value": 1 },
     "postgresDbName": { "value": "statusdb" },
     "postgresUser": { "value": "postgres" }
   }
