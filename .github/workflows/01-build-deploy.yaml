@@ -5,7 +5,7 @@ on:
     branches: [ main ]
     paths:
       - 'apps/dev_apps/status-app/**'
-      - '.github/workflows/01-build-and-deploy.yml'
+      - '.github/workflows/01-build-deploy.yaml'
   workflow_dispatch:
 
 jobs:

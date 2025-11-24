@@ -6,7 +6,7 @@ on:
     paths:
       - 'apps/dev_apps/status-app/infra/**'
       - 'apps/dev_apps/status-app/deploy-status-app.ps1'
-      - '.github/workflows/02-deploy-infra-only.yml'
+      - '.github/workflows/02-deploy-infra.yaml'
   workflow_dispatch:
 
 jobs:
