@@ -1,37 +1,26 @@
-targetScope = 'resourceGroup'  // Deploys into the KV's RG
+targetScope = 'resourceGroup'  // Deploys to KV's RG
 
-@description('Name of the Key Vault')
+@description('Subscription ID')
+param subscriptionId string = subscription().subscriptionId  // Default to current
+
+@description('KV Resource Group Name')
+param kvResourceGroupName string = 'rg-dev-kv-wake-dev'
+
+@description('KV Name')
 param keyVaultName string
 
-@description('Resource group name of the Key Vault')
-param kvResourceGroupName string = 'rg-dev-kv-wake-dev'  // Hardcode or param for flexibility
-
-@description('Principal ID of the App Service managed identity')
+@description('App Service Principal ID')
 param principalId string
 
-@description('Role definition ID for Key Vault Secrets User (get secrets only)')
-param roleDefinitionId string = '4633458b-17de-408a-b874-0445c86b69e6'
-
-@description('Unique description for the role assignment')
-param description string = 'App Service access to KV secrets'
-
-var roleAssignmentName = guid(resourceGroup().id, principalId, 'kv-secrets-user')  // Deterministic GUID for repeatability
-
-// Reference the existing KV in its RG
-resource existingKv 'Microsoft.KeyVault/vaults@2023-07-01' existing = {
-  name: keyVaultName
-  scope: resourceGroup(subscription().subscriptionId, kvResourceGroupName)  // Cross-RG reference
-}
-
-// Create the role assignment scoped to the KV (vault-level, not secret-specific for simplicity)
-resource roleAssignment 'Microsoft.Authorization/roleAssignments@2023-04-01' = {
-  name: roleAssignmentName
-  scope: existingKv
+@roleDefinitionId('Microsoft.Authorization/roleDefinitions/4633458b-17de-408a-b874-0445c86b69e6')  // Key Vault Secrets User (built-in, no param needed)
+@description('Grant app access to get secrets from KV')
+resource roleAssignment 'Microsoft.Authorization/roleAssignments@2022-04-01' = {  // Updated API version
+  name: guid(subscriptionId, principalId, 'kv-secrets-user-${keyVaultName}')  // Deterministic GUID
+  scope: resourceGroup(subscriptionId, kvResourceGroupName).getSecret(keyVaultName)  // Direct scope to KV (no 'existing' resource needed)
   properties: {
-    roleDefinitionId: subscriptionResourceId('Microsoft.Authorization/roleDefinitions', roleDefinitionId)
     principalId: principalId
-    principalType: 'ServicePrincipal'  // For managed identities
-    description: description
+    principalType: 'ServicePrincipal'
+    description: 'Grant ${keyVaultName} access for db-connection-string (deployed ${deployment().name})'  // Now after var
   }
 }
 
