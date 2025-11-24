@@ -19,6 +19,9 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Install Az
+        run: pwsh -c "Install-Module Az -Force -AllowClobber"
+        
       - name: Azure Login (OIDC)
         uses: azure/login@v2
         with:

@@ -6,7 +6,7 @@
     "appName": { "value": "statusapp" },
     "location": { "value": "eastus" },
 
-    "acrName": { "value": "acrwakedev" },
+    "acrName": { "value": "acrwakedev01" },
     "vaultName": { "value": "kv-wake-dev" },
 
     "appServicePlanSku": { "value": "B1" },

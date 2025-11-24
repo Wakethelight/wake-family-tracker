@@ -1,109 +1,157 @@
 [CmdletBinding()]
 param(
     [ValidateSet("dev","prod")]
-    [string]$Environment,
-
-    [Parameter()]
-    [string] $BicepFile = (Join-Path -Path $PSScriptRoot -ChildPath "bicep/main.bicep"),  # Changed to main.bicep
-
-    [Parameter()]
-    [string] $ConfigFile,
-
-    [Parameter()]
-    [string] $ParameterFile
+    [string]$Environment = $null  # Optional: pass "dev" or "prod", otherwise auto-detect
 )
 
-# Prompt if environment not supplied
+# ================================
+# 1. AUTO-DETECT ENVIRONMENT
+# ================================
+if (-not $Environment -and $env:GITHUB_WORKSPACE) {
+    $currentPath = (Get-Location).Path
+    if ($currentPath -like "*dev_apps*")     { $Environment = "dev" }
+    elseif ($currentPath -like "*prod_apps*") { $Environment = "prod" }
+}
+
+# Local fallback prompt
 if (-not $Environment) {
-    $envChoice = Read-Host "Which environment do you want to deploy to? (dev/prod, default=dev)"
-    if ([string]::IsNullOrWhiteSpace($envChoice)) {
-        $Environment = "dev"
-    } elseif ($envChoice -in @("dev","prod")) {
-        $Environment = $envChoice
-    } else {
-        Write-Error "Invalid environment choice. Use dev or prod."
-        exit
+    $envInput = Read-Host "Enter environment (dev/prod) [default: dev]"
+    $Environment = if ($envInput) { $envInput } else { "dev" }
+}
+
+Write-Host "Deploying to environment: $Environment" -ForegroundColor Green
+
+# ================================
+# 2. ENVIRONMENT CONFIG (no files!)
+# ================================
+$envConfig = @{
+    dev  = @{
+        ResourceGroupPrefix = "rg-dev"
+        Location            = "eastus"
+        Tags                = @{ Environment="Development"; Owner="Chris"; CostCenter="DEV-001" }
+        AppServiceSuffix    = "-dev"
+        VaultName           = "kv-wake-dev"
+        AcrName             = "acrwakedev01"
+    }
+    prod = @{
+        ResourceGroupPrefix = "rg-prod"
+        Location            = "eastus"
+        Tags                = @{ Environment="Production"; Owner="Chris"; CostCenter="PROD-001" }
+        AppServiceSuffix    = ""
+        VaultName           = "kv-wake-prod"   # change when you have it
+        AcrName             = "acrwakeprod01"   # change when you have it
     }
 }
 
-# Resolve config/param paths AFTER environment is finalized
-if (-not $ConfigFile) {
-    $ConfigFile = Join-Path $PSScriptRoot "config.$Environment.json"
-}
-if (-not $ParameterFile) {
-    $ParameterFile = Join-Path $PSScriptRoot "bicep/params/$Environment.json"
-}
+$config = $envConfig[$Environment]
 
-# Load config
-$config = Get-Content $ConfigFile | ConvertFrom-Json
+# ================================
+# 3. REQUIRED SECRETS / VARIABLES
+# ================================
+$TenantId         = $env:AZURE_TENANT_ID
+$SubscriptionId   = $env:AZURE_SUBSCRIPTION_ID
+$PostgresPassword = $env:POSTGRES_PASSWORD
 
-# Only run Connect-AzAccount locally
-$subscriptionId = $config.SubscriptionId
-if ($env:GITHUB_ACTIONS -or $env:TF_BUILD) {
-    Write-Host "Running in CI/CD, assuming Azure login handled by pipeline."
-} else {
-    Connect-AzAccount -Tenant $config.TenantId -Subscription $subscriptionId
+if (-not $TenantId -or -not $SubscriptionId) {
+    Write-Error "AZURE_TENANT_ID and AZURE_SUBSCRIPTION_ID must be set in GitHub Secrets/Variables"
+    exit 1
 }
 
-# Set context explicitly
-Set-AzContext -Tenant $config.TenantId -Subscription $subscriptionId
-$ctx = Get-AzContext
-Write-Host "Active context: Tenant=$($ctx.Tenant.Id), Subscription=$($ctx.Subscription.Id)"
-
-# Read parameter file
-$params = Get-Content $ParameterFile | ConvertFrom-Json
-$appName = $params.parameters.appName.value
-$location  = $params.parameters.location.value
-$vaultName = $params.parameters.vaultName.value  # For post-deploy
-
-# Convert tags to hashtable
-$tags = @{}
-$config.Tags.PSObject.Properties | ForEach-Object {
-    $tags[$_.Name] = $_.Value
-}
-
-# Build vault resource group name
-$appResourceGroup = "$($config.ResourceGroupPrefix)-$appName"
-Write-Host "Deploying StatusApp to Resource Group: $appResourceGroup in $Environment environment"
-
-# Create RG if not exists
-if (-not (Get-AzResourceGroup -Name $appResourceGroup -ErrorAction SilentlyContinue)) {
-    New-AzResourceGroup -Name $appResourceGroup -Location $config.DefaultLocation -Tag $tags
-}
-
-# Handle postgresPassword securely
+# ================================
+# 4. AZURE LOGIN & CONTEXT
+# ================================
 if ($env:GITHUB_ACTIONS) {
-    $postgresPassword = $env:POSTGRES_PASSWORD  # From GitHub Secrets
+    Write-Host "Running in GitHub Actions — using OIDC"
 } else {
-    $postgresPasswordSecure = Read-Host -AsSecureString -Prompt "Enter Postgres password"
-    $postgresPassword = [System.Runtime.InteropServices.Marshal]::PtrToStringAuto([System.Runtime.InteropServices.Marshal]::SecureStringToBSTR($postgresPasswordSecure))
-}
-if ([string]::IsNullOrEmpty($postgresPassword)) {
-    Write-Error "Postgres password is required."
-    exit
+    Connect-AzAccount -Tenant $TenantId -Subscription $SubscriptionId -UseDeviceAuthentication
 }
 
-# Deploy StatusApp with Bicep (pass password dynamically)
+Set-AzContext -Tenant $TenantId -Subscription $SubscriptionId | Out-Null
+
+# ================================
+# 5. RESOURCE NAMES
+# ================================
+$appName           = "statusapp"
+$resourceGroupName = "$($config.ResourceGroupPrefix)-$appName"
+$appServiceName    = "$appName$($config.AppServiceSuffix)"  # statusapp-dev or statusapp
+
+Write-Host "Resource Group : $resourceGroupName"
+Write-Host "App Service    : $appServiceName"
+Write-Host "Key Vault      : $($config.VaultName)"
+
+# ================================
+# 6. CREATE RG IF MISSING
+# ================================
+if (-not (Get-AzResourceGroup -Name $resourceGroupName -ErrorAction SilentlyContinue)) {
+    New-AzResourceGroup -Name $resourceGroupName -Location $config.Location -Tag $config.Tags | Out-Null
+    Write-Host "Created resource group $resourceGroupName"
+}
+
+# ================================
+# 7. POSTGRES PASSWORD (secure handling)
+# ================================
+if ($env:GITHUB_ACTIONS) {
+    if (-not $PostgresPassword) {
+        Write-Error "POSTGRES_PASSWORD secret is missing!"
+        exit 1
+    }
+    $postgresPasswordPlain = $PostgresPassword
+} else {
+    $sec = Read-Host "Enter Postgres admin password" -AsSecureString
+    $postgresPasswordPlain = [Runtime.InteropServices.Marshal]::PtrToStringAuto(
+        [Runtime.InteropServices.Marshal]::SecureStringToBSTR($sec))
+}
+
+# ================================
+# 8. DEPLOY BICEP
+# ================================
+$bicepFile        = Join-Path $PSScriptRoot "bicep/main.bicep"
+$parameterFile    = Join-Path $PSScriptRoot "bicep/params/$Environment.json"
+
+Write-Host "Deploying Bicep template..."
 New-AzResourceGroupDeployment `
-    -ResourceGroupName $appResourceGroup `
-    -TemplateFile $BicepFile `
-    -TemplateParameterFile $ParameterFile `
-    -postgresPassword $postgresPassword  # Dynamic pass
+    -ResourceGroupName $resourceGroupName `
+    -TemplateFile $bicepFile `
+    -TemplateParameterFile $parameterFile `
+    -postgresPassword $postgresPasswordPlain `
+    -Verbose
 
-# Post-deploy: Get outputs from deployment
-$deploymentName = Split-Path $BicepFile -LeafBase  # e.g., 'main'
-$deployment = Get-AzResourceGroupDeployment -ResourceGroupName $appResourceGroup -Name $deploymentName
-$dbFqdn = $deployment.Outputs.dbFqdn.Value
-$storageAccountName = $deployment.Outputs.storageAccountName.Value
-$storageAccountKey = $deployment.Outputs.storageAccountKey.Value
+# ================================
+# 9. GET DEPLOYMENT OUTPUTS
+# ================================
+$deployment = Get-AzResourceGroupDeployment -ResourceGroupName $resourceGroupName -Name "main"
+$dbFqdn           = $deployment.Outputs.dbFqdn.Value
+$storageName      = $deployment.Outputs.storageAccountName.Value
+$storageKey       = $deployment.Outputs.storageAccountKey.Value
 
-# Upload init.sql to file share
-$ctx = New-AzStorageContext -StorageAccountName $storageAccountName -StorageAccountKey $storageAccountKey
-$initSqlPath = Join-Path $PSScriptRoot "../db/init.sql"  # Adjust if needed
-Set-AzStorageFileContent -ShareName "init-sql" -Context $ctx -Path "init.sql" -Source $initSqlPath -Force
-Write-Host "Uploaded init.sql to file share."
+# ================================
+# 10. UPLOAD init.sql
+# ================================
+$ctx = New-AzStorageContext -StorageAccountName $storageName -StorageAccountKey $storageKey
+$initSqlSource = Join-Path $PSScriptRoot "../db/init.sql"
 
-# Write DB connection string to KV (like your ACR secrets)
-$connString = "postgresql://postgres:$postgresPassword@$dbFqdn:5432/statusdb?sslmode=disable"
-Set-AzKeyVaultSecret -VaultName $vaultName -Name "db-connection-string" -SecretValue (ConvertTo-SecureString $connString -AsPlainText -Force)
-Write-Host "Updated Key Vault with db-connection-string."
+Set-AzStorageFileContent `
+    -ShareName "init-sql" `
+    -Context $ctx `
+    -Path "init.sql" `
+    -Source $initSqlSource `
+    -Force
+
+Write-Host "Uploaded init.sql"
+
+# ================================
+# 11. WRITE CONNECTION STRING TO KV
+# ================================
+$connString = "postgresql://postgres:$postgresPasswordPlain@$dbFqdn:5432/statusdb?sslmode=disable"
+Set-AzKeyVaultSecret `
+    -VaultName $config.VaultName `
+    -Name "db-connection-string" `
+    -SecretValue (ConvertTo-SecureString $connString -AsPlainText -Force)
+
+Write-Host "Updated Key Vault secret 'db-connection-string'"
+
+# ================================
+# 12. FINAL SUCCESS
+# ================================
+Write-Host "DEPLOYMENT COMPLETED SUCCESSFULLY!" -ForegroundColor Green
+Write-Host "App URL: https://$appServiceName.azurewebsites.net"
