@@ -15,7 +15,7 @@
     "aciContainerGroupName": { "value": "statusdb-aci" },
     "postgresImage": { "value": "postgres:15-alpine" },
     "postgresCpu": { "value": 1 },
-    "postgresMemoryGb": { "value": 1 },
+    "postgresMemoryGb": { "value": 2 },
     "postgresDbName": { "value": "statusdb" },
     "postgresUser": { "value": "postgres" }
   }

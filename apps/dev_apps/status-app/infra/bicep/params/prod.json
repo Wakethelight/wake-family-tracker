@@ -6,11 +6,17 @@
     "appName": { "value": "statusapp" },
     "location": { "value": "eastus" },
 
-    "acrName": { "value": "acrwakeprod" },
+    "acrName": { "value": "acrwakeprod01" },
     "vaultName": { "value": "kv-wake-prod" },
 
     "appServicePlanSku": { "value": "B1" },
+    "dnsLabel": { "value": "statusdb-prod-01" },
 
-    "dnsLabel": { "value": "statusdb-prod-01" }
+    "aciContainerGroupName": { "value": "statusdb-aci" },
+    "postgresImage": { "value": "postgres:15-alpine" },
+    "postgresCpu": { "value": 1 },
+    "postgresMemoryGb": { "value": 2 },
+    "postgresDbName": { "value": "statusdb" },
+    "postgresUser": { "value": "postgres" }
   }
 }
