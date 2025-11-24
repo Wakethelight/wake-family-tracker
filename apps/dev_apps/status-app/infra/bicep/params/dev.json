@@ -12,7 +12,6 @@
     "appServicePlanSku": { "value": "B1" },
     "dnsLabel": { "value": "statusdb-dev-01" },
 
-    "commentACI": { "value": "ACI-specific config (you control everything here)"},
     "aciContainerGroupName": { "value": "statusdb-aci" },
     "postgresImage": { "value": "postgres:15-alpine" },
     "postgresCpu": { "value": 1 },
