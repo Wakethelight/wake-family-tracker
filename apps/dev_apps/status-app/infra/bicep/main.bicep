@@ -59,6 +59,20 @@ module web 'modules/appService.bicep' = {
   }
 }
 
+// NEW: Scoped module for KV RBAC assignment (deploys into KV's RG)
+module kvRoleAssignment 'modules/kv-role-assignment.bicep' = {
+  name: 'kv-role-assign-${appName}'  // Unique name
+  scope: resourceGroup('rg-dev-kv-wake-dev')  // Deploys INTO the KV's RG (cross-RG module call)
+  params: {
+    keyVaultName: vaultName  // 'kv-wake-dev'
+    principalId: web.outputs.identityPrincipalId  // App's system identity
+    description: 'Grant ${appName} access to db-connection-string in ${vaultName}'
+  }
+  dependsOn: [
+    web  // Ensure app (and identity) deploys first
+  ]
+}
+
 output dbFqdn string = aci.outputs.dbFqdn
 output storageAccountName string = storage.outputs.storageAccountName
 output storageAccountKey string = storage.outputs.storageAccountKey
