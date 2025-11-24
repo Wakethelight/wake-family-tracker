@@ -5,7 +5,7 @@ on:
     branches: [ main ]
     paths:
       - 'apps/dev_apps/status-app/**'          # Your app code + Dockerfile
-      - '.github/workflows/01-build-and-deploy.yml'  # Self-trigger if needed
+      - '.github/workflows/01-build-deploy.yaml'  # Self-trigger if needed
   workflow_dispatch:
 
 jobs:

@@ -6,7 +6,7 @@ on:
     paths:
       - 'apps/dev_apps/status-app/infra/**'
       - 'apps/dev_apps/status-app/deploy-status-app.ps1'
-      - '.github/workflows/02-deploy-infra-only.yml' # Self-trigger if needed
+      - '.github/workflows/02-deploy-infra.yaml' # Self-trigger if needed
 
   workflow_dispatch:
 
