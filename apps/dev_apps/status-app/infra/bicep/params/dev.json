@@ -9,15 +9,14 @@
     "acrName": { "value": "acrwakedev01" },
     "vaultName": { "value": "kv-wake-dev" },
 
-    "appServicePlanSku": { "value": "B1" },
+    "appServicePlanSku": { "value": "S1" },
     "dnsLabel": { "value": "statusdb-dev-01" },
 
     "aciContainerGroupName": { "value": "statusdb-aci" },
     "postgresImage": { "value": "postgres:15-alpine" },
-    "postgresCpu": { "value": 2 },
-    "postgresMemoryGb": { "value": 4 },
+    "postgresCpu": { "value": 1 },
+    "postgresMemoryGb": { "value": 2 },
     "osType": { "value": "Linux" },
-    "vmSize": { "value": "Standard_D2_v3" },
     "postgresDbName": { "value": "statusdb" },
     "postgresUser": { "value": "postgres" }
   }
