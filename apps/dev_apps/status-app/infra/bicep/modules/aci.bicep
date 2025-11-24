@@ -14,14 +14,12 @@ param postgresMemoryGb int
 param postgresDbName string
 param postgresUser string
 param osType string
-param vmSize string
 
 resource containerGroup 'Microsoft.ContainerInstance/containerGroups@2023-05-01' = {
   name: containerGroupName
   location: location
   properties: {
     osType: osType
-    vmSize: vmSize
     restartPolicy: 'Always'
     ipAddress: {
       type: 'Public'

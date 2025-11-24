@@ -17,7 +17,6 @@ param postgresCpu int
 param postgresMemoryGb int
 param postgresDbName string
 param postgresUser string
-param vmSize string
 param osType string
 
 module storage 'modules/storage.bicep' = {
@@ -39,7 +38,6 @@ module aci 'modules/aci.bicep' = {
 
     // Newly passed from dev.json
     osType: osType
-    vmSize: vmSize
     containerGroupName: aciContainerGroupName
     postgresImage: postgresImage
     postgresCpu: postgresCpu
