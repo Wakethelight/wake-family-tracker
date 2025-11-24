@@ -4,18 +4,27 @@ param(
     [string]$Environment = $null # Optional: pass "dev" or "prod", otherwise auto-detect
 )
 # ================================
-# 1. AUTO-DETECT ENVIRONMENT
+# 1. DETERMINE ENVIRONMENT — CI + Local friendly, ZERO prompts
 # ================================
-if (-not $Environment -and $env:GITHUB_WORKSPACE) {
-    $currentPath = (Get-Location).Path
-    if ($currentPath -like "*dev_apps*") { $Environment = "dev" }
-    elseif ($currentPath -like "*prod_apps*") { $Environment = "prod" }
-}
-# Local fallback prompt
 if (-not $Environment) {
-    $envInput = Read-Host "Enter environment (dev/prod) [default: dev]"
-    $Environment = if ($envInput) { $envInput } else { "dev" }
+    if ($env:GITHUB_WORKSPACE) {
+        # CI: infer from the folder structure
+        $relative = (Get-Location).Path.Replace($env:GITHUB_WORKSPACE, "").TrimStart('/\')
+        if ($relative -like "apps/dev_apps/*")     { $Environment = "dev" }
+        elseif ($relative -like "apps/prod_apps/*") { $Environment = "prod" }
+        else {
+            Write-Error "Cannot auto-detect environment from path: $relative"
+            exit 1
+        }
+    }
+    else {
+        # Local developer running the script → default to dev
+        $Environment = "dev"
+    }
 }
+
+# Optional: allow override from command line (great for local prod testing)
+# Example: pwsh deploy-status-app.ps1 -Environment prod
 Write-Host "Deploying to environment: $Environment" -ForegroundColor Green
 # ================================
 # 2. ENVIRONMENT CONFIG (no files!)
