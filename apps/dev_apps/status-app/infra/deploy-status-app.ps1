@@ -140,9 +140,9 @@ Write-Host "Uploaded init.sql"
 $connString = "postgresql://postgres:$postgresPasswordPlain@$dbFqdn:5432/statusdb?sslmode=disable"
 Set-AzKeyVaultSecret `
     -VaultName $config.VaultName `
-    -Name "DB_CONNECTION_STRING" `
+    -Name "db-connection-string" `
     -SecretValue (ConvertTo-SecureString $connString -AsPlainText -Force)
-Write-Host "Updated Key Vault secret 'DB_CONNECTION_STRING'"
+Write-Host "Updated Key Vault secret 'db-connection-string'"
 
 # ================================
 # 12. GRANT APP SERVICE IDENTITY RBAC ACCESS TO KEY VAULT (2025 best practice)
