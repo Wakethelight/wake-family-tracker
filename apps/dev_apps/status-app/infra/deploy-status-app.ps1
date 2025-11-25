@@ -140,24 +140,9 @@ Write-Host "Uploaded init.sql"
 $connString = "postgresql://postgres:$postgresPasswordPlain@$dbFqdn:5432/statusdb?sslmode=disable"
 Set-AzKeyVaultSecret `
     -VaultName $config.VaultName `
-    -Name "db-connection-string" `
+    -Name "DB_CONNECTION_STRING" `
     -SecretValue (ConvertTo-SecureString $connString -AsPlainText -Force)
-Write-Host "Updated Key Vault secret 'db-connection-string'"
-
-# 11.5 Remove any leftover bad DB_CONNECTION_STRING from App Settings (safe version)
-Write-Host "Ensuring no bad DB_CONNECTION_STRING exists in App Settings..." -ForegroundColor Cyan
-$currentHash = @{}
-foreach ($s in (Get-AzWebApp -ResourceGroupName $resourceGroupName -Name $appServiceName).SiteConfig.AppSettings) {
-    $currentHash[$s.Name] = $s.Value
-}
-if ($currentHash.ContainsKey("DB_CONNECTION_STRING")) {
-    Write-Host "Removing bad DB_CONNECTION_STRING from App Settings" -ForegroundColor Yellow
-    $currentHash.Remove("DB_CONNECTION_STRING")
-    Set-AzWebApp -ResourceGroupName $resourceGroupName -Name $appServiceName -AppSettings $currentHash | Out-Null
-    Write-Host "Cleaned!" -ForegroundColor Green
-} else {
-    Write-Host "Already clean" -ForegroundColor Cyan
-}
+Write-Host "Updated Key Vault secret 'DB_CONNECTION_STRING'"
 
 # ================================
 # 12. GRANT APP SERVICE IDENTITY RBAC ACCESS TO KEY VAULT (2025 best practice)
