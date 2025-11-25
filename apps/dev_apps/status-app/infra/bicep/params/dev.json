@@ -7,7 +7,7 @@
     "location": { "value": "centralus" },
     "acrName": { "value": "acrwakedev01" },
     "vaultName": { "value": "kv-wake-dev" },
-    "appServicePlanSku": { "value": "F1" },
+    "appServicePlanSku": { "value": "B1" },
     "dnsLabel": { "value": "statusdb-dev-01" },
     "aciContainerGroupName": { "value": "statusdb-aci" },
     "postgresImage": { "value": "postgres:15-alpine" },
