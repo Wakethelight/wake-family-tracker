@@ -66,16 +66,17 @@ app.jinja_env.filters['timeago'] = time_ago
 @app.route("/", methods=["GET", "POST"])
 def index():
     if request.method == "POST":
-        name = request.form.get("name")
+        user_id = request.form.get("user_id")
         status = request.form.get("status")
         session = SessionLocal()
         try:
-            user_status = UserStatus(user_id=name, status=status, updated_at=datetime.utcnow())
+            user_status = UserStatus(user_id=user_id, status=status, updated_at=datetime.utcnow())
             session.add(user_status)
             session.commit()
         finally:
             session.close()
         return redirect(url_for("dashboard"))
+
     return render_template("index.html")
 
 @app.route("/dashboard")

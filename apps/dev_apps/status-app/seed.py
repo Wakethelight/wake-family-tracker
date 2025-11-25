@@ -21,7 +21,7 @@ def seed_data():
         demo_users = [
             UserStatus(user_id="alice", status="remote"),
             UserStatus(user_id="bob", status="office"),
-            UserStatus(user_id="carol", status="home"),
+            UserStatus(user_id="carol", status="leave"),
         ]
         session.add_all(demo_users)
         session.commit()
