@@ -144,6 +144,17 @@ Set-AzKeyVaultSecret `
     -SecretValue (ConvertTo-SecureString $connString -AsPlainText -Force)
 Write-Host "Updated Key Vault secret 'db-connection-string'"
 
+# 11.5 Remove any leftover bad App Setting (defensive)
+Write-Host "Ensuring no bad DB_CONNECTION_STRING exists in App Settings..." -ForegroundColor Cyan
+$appSettings = Get-AzWebApp -ResourceGroupName $resourceGroupName -Name $appServiceName
+$currentSettings = $appSettings.SiteConfig.AppSettings
+
+if ($currentSettings | Where-Object { $_.Name -eq "DB_CONNECTION_STRING" }) {
+    Write-Host "Removing old bad DB_CONNECTION_STRING from App Settings"
+    $newSettings = $currentSettings | Where-Object { $_.Name -ne "DB_CONNECTION_STRING" }
+    Set-AzWebApp -ResourceGroupName $resourceGroupName -Name $appServiceName -AppSettings $newSettings | Out-Null
+}
+
 # ================================
 # 12. GRANT APP SERVICE IDENTITY RBAC ACCESS TO KEY VAULT (2025 best practice)
 # ================================

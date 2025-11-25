@@ -92,7 +92,11 @@ def dashboard():
             last_updated = str(latest)
 
     session.close()
-    return render_template("dashboard.html", statuses=statuses, last_updated=last_updated)
+    return render_template(
+        "dashboard.html", 
+        statuses=statuses, 
+        last_updated=last_updated,
+        summary=summary)
 
 # Add for local dev
 if __name__ == "__main__":
