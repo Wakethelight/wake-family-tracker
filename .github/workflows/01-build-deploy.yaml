@@ -75,11 +75,14 @@ jobs:
           AZURE_SUBSCRIPTION_ID: ${{ vars.AZURE_SUBSCRIPTION_ID }}
 
       - name: Fetch DB Connection String from Key Vault
-        uses: azure/keyvault@v1
-        with:
-          keyvault: ${{ steps.deploy.outputs.VAULT_NAME }}
-          secrets: |
-            db-connection-string
+        run: |
+          echo "Fetching db-connection-string from Key Vault..."
+          secret=$(az keyvault secret show \
+            --vault-name ${{ steps.deploy.outputs.VAULT_NAME }} \
+            --name db-connection-string \
+            --query value -o tsv)
+          echo "DB_CONNECTION_STRING=$secret" >> $GITHUB_ENV
+
 
       - name: Initialize Database Schema
         if: steps.deploy.outcome == 'success'
