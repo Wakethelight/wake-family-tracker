@@ -19,6 +19,8 @@ COPY . .
 
 # Expose port (App Service maps externally to 80)
 EXPOSE 8000
+# Copy init script
+COPY init_db.py /app/init_db.py
 
-# Run with Gunicorn
-CMD ["gunicorn", "-b", "0.0.0.0:8000", "app:app"]
+# Run init script, then start Gunicorn
+CMD python /app/init_db.py && gunicorn --bind=0.0.0.0:8000 --workers=2 --timeout=120 app:app

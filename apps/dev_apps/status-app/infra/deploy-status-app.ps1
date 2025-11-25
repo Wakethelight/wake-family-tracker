@@ -137,13 +137,16 @@ Write-Host "Uploaded init.sql"
 # ================================
 # 11. WRITE CONNECTION STRING TO KV
 # ================================
-$connString = "postgresql://postgres:$postgresPasswordPlain@$dbFqdn:5432/statusdb?sslmode=disable"
+# Escape ! in password (PowerShell delayed expansion bug on Linux runners)
+$escapedPassword = $postgresPasswordPlain -replace '!', '!!'
+
+# Now build the string
+$connString = "postgresql://postgres:$escapedPassword@$dbFqdn:5432/statusdb?sslmode=disable"
 Set-AzKeyVaultSecret `
     -VaultName $config.VaultName `
     -Name "db-connection-string" `
     -SecretValue (ConvertTo-SecureString $connString -AsPlainText -Force)
-Write-Host "Updated Key Vault secret 'db-connection-string'"
-
+Write-Host "Updated Key Vault secret 'db-connection-string' (FQDN: $dbFqdn)"
 # ================================
 # 12. GRANT APP SERVICE IDENTITY RBAC ACCESS TO KEY VAULT (2025 best practice)
 # ================================
