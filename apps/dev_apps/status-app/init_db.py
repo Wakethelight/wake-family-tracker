@@ -4,6 +4,7 @@ import time
 import sys
 from sqlalchemy import create_engine
 from sqlalchemy.exc import OperationalError
+from sqlalchemy import text
 from models import Base
 
 db_url = os.getenv("DB_CONNECTION_STRING")
@@ -16,7 +17,7 @@ for attempt in range(30):
     try:
         engine = create_engine(db_url, pool_pre_ping=True, connect_args={"connect_timeout": 5})
         with engine.connect() as conn:
-            conn.execute("SELECT 1")
+            conn.execute(text("SELECT 1"))
         print("Connected! Creating tables if needed...")
         Base.metadata.create_all(engine)
         print("Tables ready")
