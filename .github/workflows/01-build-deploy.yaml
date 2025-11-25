@@ -4,47 +4,48 @@ on:
     branches: [ main ]
     paths:
       - 'apps/dev_apps/status-app/**'
-      - '.github/workflows/01-build-and-deploy.yml'  # ✅ Good: Includes workflow self-updates
-  workflow_dispatch:  # ✅ Good: Manual trigger for testing
+      - '.github/workflows/01-build-and-deploy.yml'
+  workflow_dispatch:
+
 jobs:
   build-and-deploy:
-    runs-on: ubuntu-latest  # ✅ Good: Linux is fine for pwsh + Docker
+    runs-on: ubuntu-latest
     permissions:
-      id-token: write  # ✅ Required for OIDC
+      id-token: write
       contents: read
     steps:
-      - uses: actions/checkout@v4  # ✅ Latest version
+      - uses: actions/checkout@v4
 
       - name: Azure Login (OIDC)
-        uses: azure/login@v2  # ✅ Latest; OIDC is 2025 best practice
+        uses: azure/login@v2
         with:
           client-id: ${{ vars.AZURE_CLIENT_ID }}
           tenant-id: ${{ vars.AZURE_TENANT_ID }}
           subscription-id: ${{ vars.AZURE_SUBSCRIPTION_ID }}
-          enable-AzPSSession: true  # ✅ Enables Az in pwsh — exact Microsoft rec
+          enable-AzPSSession: true
 
       - name: Detect Changes
         id: changes
-        uses: dorny/paths-filter@v3  # ✅ Latest
+        uses: dorny/paths-filter@v3
         with:
           filters: |
             app-code:
               - 'apps/dev_apps/status-app/**'
               - '!apps/dev_apps/status-app/infra/**'
               - '!apps/dev_apps/status-app/**/*.bicep'
-              - '!apps/dev_apps/status-app/**/*.json'  # ✅ Correct multi-exclude syntax
+              - '!apps/dev_apps/status-app/**/*.json'
             infra:
               - 'apps/dev_apps/status-app/infra/**'
               - 'apps/dev_apps/status-app/**/*.bicep'
-              - 'apps/dev_apps/status-app/**/*.json'  # ✅ Good: Catches Bicep/params changes
+              - 'apps/dev_apps/status-app/**/*.json'
 
       - name: Build and Push Image
-        if: steps.changes.outputs.app-code == 'true'  # ✅ Efficient: Builds only on code change
+        if: steps.changes.outputs.app-code == 'true'
         working-directory: apps/dev_apps/status-app
         run: |
           IMAGE="${{ vars.ACR_NAME }}.azurecr.io/status-app"
           SHA=$(git rev-parse --short HEAD)
-          az acr login --name ${{ vars.ACR_NAME }}  # ✅ Secure: Uses OIDC for ACR too
+          az acr login --name ${{ vars.ACR_NAME }}
           docker build -t $IMAGE:latest -t $IMAGE:$SHA .
           docker push $IMAGE:latest
           docker push $IMAGE:$SHA
@@ -52,7 +53,7 @@ jobs:
           echo "New image built: $IMAGE:$SHA"
 
       - name: Reuse Latest Image
-        if: steps.changes.outputs.app-code != 'true'  # ✅ Good: Avoids unnecessary builds
+        if: steps.changes.outputs.app-code != 'true'
         run: |
           echo "No code changes → reusing latest image"
           echo "IMAGE_TAG=latest" >> $GITHUB_ENV
@@ -62,21 +63,32 @@ jobs:
         if: steps.changes.outputs.infra == 'true' || steps.changes.outputs.app-code == 'true'
         shell: pwsh
         run: |
-          # Microsoft rec: Check and install latest Az if needed (fixes Ubuntu OIDC bugs)
           $azVersion = (Get-Module -ListAvailable -Name Az | Sort-Object Version -Descending | Select-Object -First 1 -ExpandProperty Version)
           if (-not $azVersion -or [version]$azVersion -lt [version]"15.0.0") {
             Install-Module -Name Az -Scope CurrentUser -Repository PSGallery -Force -AllowClobber -SkipPublisherCheck
           }
-          
-          # Import core modules for your script
           Import-Module Az.Accounts, Az.Resources, Az.KeyVault, Az.Websites, Az.Storage
-          
-          # Run from script's folder to avoid path issues
           & "$env:GITHUB_WORKSPACE/apps/dev_apps/status-app/infra/deploy-status-app.ps1"
         env:
           POSTGRES_PASSWORD: ${{ secrets.POSTGRES_PASSWORD }}
           AZURE_TENANT_ID: ${{ vars.AZURE_TENANT_ID }}
           AZURE_SUBSCRIPTION_ID: ${{ vars.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Fetch DB Connection String from Key Vault
+        uses: azure/keyvault@v1
+        with:
+          keyvault: ${{ steps.deploy.outputs.VAULT_NAME }}
+          secrets: |
+            db-connection-string
+
+      - name: Initialize Database Schema
+        if: steps.deploy.outcome == 'success'
+        run: |
+          echo "Running init_db.py against Postgres in ACI..."
+          docker run --rm \
+            -e DB_CONNECTION_STRING="${{ env.DB_CONNECTION_STRING }}" \
+            ${{ vars.ACR_NAME }}.azurecr.io/status-app:${{ env.IMAGE_TAG }} \
+            python /app/init_db.py
 
       - name: Update App Service Container
         env:

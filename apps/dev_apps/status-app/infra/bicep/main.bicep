@@ -63,3 +63,5 @@ output dbFqdn string = aci.outputs.dbFqdn
 output storageAccountName string = storage.outputs.storageAccountName
 output storageAccountKey string = storage.outputs.storageAccountKey
 output appServiceName string = web.outputs.appServiceName
+output postgresUser string = postgresUser
+output postgresDbName string = postgresDbName

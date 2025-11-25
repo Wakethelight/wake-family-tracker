@@ -37,6 +37,7 @@ $envConfig = @{
         Tags = @{ Environment="Development"; Owner="Chris"; CostCenter="DEV-001" }
         AppServiceSuffix = "-dev"
         VaultName = "kv-wake-dev"
+        VaultResourceGroup = "rg-dev-kv-wake-dev"   # NEW
         AcrName = "acrwakedev01"
     }
     prod = @{
@@ -44,11 +45,13 @@ $envConfig = @{
         Location = "eastus"
         Tags = @{ Environment="Production"; Owner="Chris"; CostCenter="PROD-001" }
         AppServiceSuffix = ""
-        VaultName = "kv-wake-prod" # change when you have it
-        AcrName = "acrwakeprod01" # change when you have it
+        VaultName = "kv-wake-prod"
+        VaultResourceGroup = "rg-prod-kv-wake-prod" # NEW
+        AcrName = "acrwakeprod01"
     }
 }
 $config = $envConfig[$Environment]
+
 # ================================
 # 3. REQUIRED SECRETS / VARIABLES
 # ================================
@@ -113,13 +116,16 @@ New-AzResourceGroupDeployment `
     -TemplateParameterFile $parameterFile `
     -postgresPassword (ConvertTo-SecureString $postgresPasswordPlain -AsPlainText -Force) `
     -Verbose
+$deployment = Get-AzResourceGroupDeployment -ResourceGroupName $resourceGroupName -Name $deploymentName
 # ================================
 # 9. GET DEPLOYMENT OUTPUTS
 # ================================
-$deployment = Get-AzResourceGroupDeployment -ResourceGroupName $resourceGroupName -Name $deploymentName
-$dbFqdn = $deployment.Outputs.dbFqdn.Value
-$storageName = $deployment.Outputs.storageAccountName.Value
-$storageKey = $deployment.Outputs.storageAccountKey.Value
+$dbFqdn = [string]$deployment.Outputs['dbFqdn'].Value
+$postgresUser = [string]$deployment.Outputs['postgresUser'].Value
+$postgresDbName = [string]$deployment.Outputs['postgresDbName'].Value
+$storageName = [string]$deployment.Outputs['storageAccountName'].Value
+$storageKey = [string]$deployment.Outputs['storageAccountKey'].Value
+$appServiceName = [string]$deployment.Outputs['appServiceName'].Value
 Write-Host "DB FQDN: $dbFqdn"
 Write-Host "Storage Account: $storageName"
 # ================================
@@ -137,16 +143,14 @@ Write-Host "Uploaded init.sql"
 # ================================
 # 11. WRITE CONNECTION STRING TO KV
 # ================================
-# Escape ! in password (PowerShell delayed expansion bug on Linux runners)
-$escapedPassword = $postgresPasswordPlain -replace '!', '!!'
 
-# Now build the string
-$connString = "postgresql://postgres:$escapedPassword@$dbFqdn:5432/statusdb?sslmode=disable"
+$connString = "postgresql://${postgresUser}:${postgresPasswordPlain}@${dbFqdn}:5432/${postgresDbName}?sslmode=disable"
 Set-AzKeyVaultSecret `
     -VaultName $config.VaultName `
     -Name "db-connection-string" `
     -SecretValue (ConvertTo-SecureString $connString -AsPlainText -Force)
 Write-Host "Updated Key Vault secret 'db-connection-string' (FQDN: $dbFqdn)"
+
 # ================================
 # 12. GRANT APP SERVICE IDENTITY RBAC ACCESS TO KEY VAULT (2025 best practice)
 # ================================
@@ -159,7 +163,7 @@ $principalId = $webApp.Identity.PrincipalId
 if (-not $principalId) {
     Write-Warning "Managed identity not ready yet — retry in 30s or re-run workflow"
 } else {
-    $kvScope = "/subscriptions/$SubscriptionId/resourceGroups/rg-dev-kv-wake-dev/providers/Microsoft.KeyVault/vaults/$($config.VaultName)"
+    $kvScope = "/subscriptions/$SubscriptionId/resourceGroups/$($config.VaultResourceGroup)/providers/Microsoft.KeyVault/vaults/$($config.VaultName)"
     
     # Check if already assigned
     $assignment = Get-AzRoleAssignment -ObjectId $principalId -RoleDefinitionName "Key Vault Secrets User" -Scope $kvScope -ErrorAction SilentlyContinue
@@ -214,5 +218,7 @@ Write-Host "DEPLOYMENT COMPLETED SUCCESSFULLY!" -ForegroundColor Green
 Write-Host "App URL: https://$appServiceName.azurewebsites.net" -ForegroundColor Cyan
 # Outputs unchanged
 $appServiceOutput = $deployment.Outputs.appServiceName.Value
-echo "APP_SERVICE_NAME=$appServiceOutput" >> $env:GITHUB_OUTPUT
-echo "resourceGroupName=$resourceGroupName" >> $env:GITHUB_OUTPUT
+Write-Host "Emitting GitHub outputs..."
+"APP_SERVICE_NAME=$appServiceOutput" | Out-File -FilePath $env:GITHUB_OUTPUT -Append
+"resourceGroupName=$resourceGroupName" | Out-File -FilePath $env:GITHUB_OUTPUT -Append
+"VAULT_NAME=$($config.VaultName)" | Out-File -FilePath $env:GITHUB_OUTPUT -Append
