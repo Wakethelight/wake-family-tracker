@@ -68,13 +68,29 @@ def index():
     if request.method == "POST":
         user_id = request.form.get("user_id")
         status = request.form.get("status")
+
+        if not user_id or not status:
+            return "Missing user_id or status", 400
+
         session = SessionLocal()
         try:
-            user_status = UserStatus(user_id=user_id, status=status, updated_at=datetime.utcnow())
-            session.add(user_status)
+            # Check if this user already exists
+            existing = session.query(UserStatus).filter_by(user_id=user_id).first()
+            if existing:
+                existing.status = status
+                existing.updated_at = datetime.utcnow()
+            else:
+                new_status = UserStatus(
+                    user_id=user_id,
+                    status=status,
+                    updated_at=datetime.utcnow()
+                )
+                session.add(new_status)
+
             session.commit()
         finally:
             session.close()
+
         return redirect(url_for("dashboard"))
 
     return render_template("index.html")
