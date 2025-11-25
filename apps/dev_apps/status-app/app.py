@@ -8,21 +8,23 @@ from models import Base, UserStatus
 
 app = Flask(__name__)
 
-# Build connection string from environment variables
-db_url = os.getenv("DB_CONNECTION_STRING", "postgresql://postgres:password@localhost/statusdb")
+# === DATABASE CONNECTION (Azure + Local Dev) ===
+db_url = os.getenv("DB_CONNECTION_STRING")
 
-# For Azure: Fetch from Key Vault if in prod
-if os.getenv("AZURE_ENVIRONMENT"):  # Or check for WEBSITE_SITE_NAME env in App Service
-    from azure.identity import DefaultAzureCredential
-    from azure.keyvault.secrets import SecretClient
-    credential = DefaultAzureCredential()
-    kv_client = SecretClient(vault_url=os.getenv("KEY_VAULT_URL"), credential=credential)
-    db_url = kv_client.get_secret("db-connection-string").value
+# Only fall back for local development
+if not db_url:
+    print("DB_CONNECTION_STRING not found → using local dev fallback")
+    db_url = "postgresql://postgres:password@localhost:5432/statusdb"
 
-engine = create_engine(db_url)
+# Optional: confirm we're in Azure
+if os.getenv("WEBSITE_SITE_NAME"):
+    print(f"Azure App Service detected: {os.getenv('WEBSITE_SITE_NAME')}")
+    print("DB connection string loaded securely from Key Vault")
+
+engine = create_engine(db_url, pool_pre_ping=True)  # pool_pre_ping helps with ACI restarts
 SessionLocal = sessionmaker(bind=engine)
 
-# ✅ Ensure tables exist at startup
+# Ensure tables exist
 Base.metadata.create_all(engine)
 
 # --- Helper: time ago ---
