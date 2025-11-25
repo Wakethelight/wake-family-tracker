@@ -158,15 +158,32 @@ if (-not $principalId) {
 } else {
     $kvScope = "/subscriptions/$SubscriptionId/resourceGroups/rg-dev-kv-wake-dev/providers/Microsoft.KeyVault/vaults/$($config.VaultName)"
     
-    # RBAC — idempotent, works cross-region, no legacy policies
+    # Check if already assigned
     $assignment = Get-AzRoleAssignment -ObjectId $principalId -RoleDefinitionName "Key Vault Secrets User" -Scope $kvScope -ErrorAction SilentlyContinue
     if ($assignment) {
         Write-Host "RBAC already assigned (idempotent)" -ForegroundColor Cyan
     } else {
-        New-AzRoleAssignment -ObjectId $principalId `
-                             -RoleDefinitionName "Key Vault Secrets User" `
-                             -Scope $kvScope | Out-Null
-        Write-Host "Successfully granted 'Key Vault Secrets User' RBAC to $appNameFromDeploy" -ForegroundColor Green
+        # Retry logic for propagation (up to 3 tries, 30s apart)
+        $retryCount = 0
+        $maxRetries = 3
+        $success = $false
+        while ($retryCount -lt $maxRetries -and -not $success) {
+            try {
+                New-AzRoleAssignment -ObjectId $principalId `
+                                     -RoleDefinitionName "Key Vault Secrets User" `
+                                     -Scope $kvScope | Out-Null
+                Write-Host "Successfully granted 'Key Vault Secrets User' RBAC to $appNameFromDeploy" -ForegroundColor Green
+                $success = $true
+            } catch {
+                $retryCount++
+                if ($retryCount -lt $maxRetries) {
+                    Write-Host "RBAC grant attempt $retryCount failed (likely propagation): $($_.Exception.Message). Retrying in 30s..." -ForegroundColor Yellow
+                    Start-Sleep -Seconds 30
+                } else {
+                    Write-Error "RBAC grant failed after $maxRetries attempts: $($_.Exception.Message). Check OIDC perms on KV RG and re-run."
+                }
+            }
+        }
     }
 }
 
