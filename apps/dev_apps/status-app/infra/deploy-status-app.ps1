@@ -144,10 +144,34 @@ Set-AzKeyVaultSecret `
     -SecretValue (ConvertTo-SecureString $connString -AsPlainText -Force)
 Write-Host "Updated Key Vault secret 'db-connection-string'"
 
-# REMOVED: Section 12 (Grant access) — Now handled in Bicep module!
+# ================================
+# 12. GRANT APP SERVICE IDENTITY RBAC ACCESS TO KEY VAULT (2025 best practice)
+# ================================
+Write-Host "Granting App Service RBAC access to Key Vault (Secrets User)..." -ForegroundColor Yellow
+
+$appNameFromDeploy = $deployment.Outputs.appServiceName.Value
+$webApp = Get-AzWebApp -ResourceGroupName $resourceGroupName -Name $appNameFromDeploy -ErrorAction Stop
+$principalId = $webApp.Identity.PrincipalId
+
+if (-not $principalId) {
+    Write-Warning "Managed identity not ready yet — retry in 30s or re-run workflow"
+} else {
+    $kvScope = "/subscriptions/$SubscriptionId/resourceGroups/rg-dev-kv-wake-dev/providers/Microsoft.KeyVault/vaults/$($config.VaultName)"
+    
+    # RBAC — idempotent, works cross-region, no legacy policies
+    $assignment = Get-AzRoleAssignment -ObjectId $principalId -RoleDefinitionName "Key Vault Secrets User" -Scope $kvScope -ErrorAction SilentlyContinue
+    if ($assignment) {
+        Write-Host "RBAC already assigned (idempotent)" -ForegroundColor Cyan
+    } else {
+        New-AzRoleAssignment -ObjectId $principalId `
+                             -RoleDefinitionName "Key Vault Secrets User" `
+                             -Scope $kvScope | Out-Null
+        Write-Host "Successfully granted 'Key Vault Secrets User' RBAC to $appNameFromDeploy" -ForegroundColor Green
+    }
+}
 
 # ================================
-# 12. ENSURE APP SERVICE IS RUNNING (renumbered from 13)
+# 13. ENSURE APP SERVICE IS RUNNING (renumbered from 13)
 # ================================
 Write-Host "Ensuring App Service is running..." -ForegroundColor Yellow
 $app = Get-AzWebApp -ResourceGroupName $resourceGroupName -Name $appServiceName -ErrorAction Stop
@@ -164,7 +188,7 @@ else {
 }
 
 # ================================
-# 13. FINAL SUCCESS (renumbered)
+# 14. FINAL SUCCESS (renumbered)
 # ================================
 Write-Host "DEPLOYMENT COMPLETED SUCCESSFULLY!" -ForegroundColor Green
 Write-Host "App URL: https://$appServiceName.azurewebsites.net" -ForegroundColor Cyan

@@ -21,7 +21,7 @@ resource app 'Microsoft.Web/sites@2023-12-01' = {
       linuxFxVersion: 'DOCKER|${acrName}.azurecr.io/status-app:latest'
       appSettings: [
         { name: 'WEBSITES_PORT', value: '8000' }
-        { name: 'KEY_VAULT_URL', value: 'https://${vaultName}.vault.azure.net/' }
+        { name: 'DB_CONNECTION_STRING', value: '@Microsoft.KeyVault(SecretUri=https://${vaultName}.vault.azure.net/secrets/db-connection-string)' }
       ]
     }
   }

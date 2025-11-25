@@ -59,20 +59,6 @@ module web 'modules/appService.bicep' = {
   }
 }
 
-// Grant App Service identity access to shared KV (different RG)
-module kvRole 'modules/kv-role-assignment.bicep' = {
-  name: 'grant-kv-access-${appName}'
-  scope: subscription()  // Must match targetScope
-  params: {
-    keyVaultName: vaultName
-    kvResourceGroupName: 'rg-dev-kv-wake-dev'  // Hardcoded for dev, easy to param later
-    principalId: web.outputs.identityPrincipalId
-  }
-  dependsOn: [
-    web
-  ]
-}
-
 output dbFqdn string = aci.outputs.dbFqdn
 output storageAccountName string = storage.outputs.storageAccountName
 output storageAccountKey string = storage.outputs.storageAccountKey

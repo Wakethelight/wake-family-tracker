@@ -62,14 +62,11 @@ jobs:
         if: steps.changes.outputs.infra == 'true' || steps.changes.outputs.app-code == 'true'
         shell: pwsh
         run: |
-          # Install/Update Az module — fixes loading issues on Ubuntu (Microsoft rec for 2025)
-          Install-Module -Name Az -Scope CurrentUser -Repository PSGallery -Force -AllowClobber -SkipPublisherCheck
-          
-          # Optional: Import explicitly (extra safety)
-          Import-Module Az.Accounts
-          Import-Module Az.Resources
-          
-          # Run your script — now Az is guaranteed loaded
+          # Microsoft rec: Explicit Az install for reliable loading on Ubuntu (fixes OIDC session bugs)
+          if (!(Get-Module -ListAvailable -Name Az -MinimumVersion 15.0.0)) {
+            Install-Module -Name Az -Scope CurrentUser -Repository PSGallery -Force -AllowClobber -SkipPublisherCheck
+          }
+          Import-Module Az.Accounts, Az.Resources, Az.KeyVault, Az.Websites  # Core modules for your script
           & "$env:GITHUB_WORKSPACE/apps/dev_apps/status-app/infra/deploy-status-app.ps1"
         env:
           POSTGRES_PASSWORD: ${{ secrets.POSTGRES_PASSWORD }}
