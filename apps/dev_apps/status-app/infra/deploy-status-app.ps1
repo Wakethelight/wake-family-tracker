@@ -137,7 +137,7 @@ Write-Host "Uploaded init.sql"
 # ================================
 # 11. WRITE CONNECTION STRING TO KV
 # ================================
-$connString = "postgresql://postgres:$postgresPasswordPlain@$dbFqdn:5432/statusdb?sslmode=disable"
+$connString = "postgresql://postgres:$postgresPasswordPlain@$dbFqdn:5432/statusdb?sslmode=require"
 Set-AzKeyVaultSecret `
     -VaultName $config.VaultName `
     -Name "db-connection-string" `
