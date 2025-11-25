@@ -86,7 +86,8 @@ jobs:
           az webapp config container set \
             --name $APP_SERVICE_NAME \
             --resource-group $RESOURCE_GROUP_NAME \
+            --docker-custom-image-name ${{ vars.ACR_NAME }}.azurecr.io/status-app:${{ env.IMAGE_TAG }} \
             --container-image-name ${{ vars.ACR_NAME }}.azurecr.io/status-app:${{ env.IMAGE_TAG }} \
-            --container-registry-url https://${{ vars.ACR_NAME }}.azurecr.io \  # ✅ CHANGED: From deprecated --docker-registry-server-url
-            --container-registry-user ${{ secrets.ACR_USERNAME }} \  # ✅ CHANGED: From deprecated --docker-registry-server-user
-            --container-registry-password ${{ secrets.ACR_PASSWORD }}  # ✅ CHANGED: From deprecated --docker-registry-server-password
+            --container-registry-url https://${{ vars.ACR_NAME }}.azurecr.io \
+            --container-registry-user ${{ secrets.ACR_USERNAME }} \
+            --container-registry-password ${{ secrets.ACR_PASSWORD }}
