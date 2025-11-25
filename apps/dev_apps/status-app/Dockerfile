@@ -23,4 +23,6 @@ EXPOSE 8000
 COPY init_db.py /app/init_db.py
 
 # Run init script, then start Gunicorn
-CMD gunicorn --bind=0.0.0.0:$PORT --workers=2 --timeout=120 app:app
+# Default to 8000 if PORT is not set
+CMD gunicorn --bind=0.0.0.0:${PORT:-8000} --workers=2 --timeout=120 app:app
+
