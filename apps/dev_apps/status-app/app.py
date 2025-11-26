@@ -36,11 +36,6 @@ engine = create_engine(
 # Use scoped_session for thread safety
 SessionLocal = scoped_session(sessionmaker(bind=engine))
 
-# === ONLY RUN THIS ONCE — NOT ON EVERY STARTUP ===
-# Remove Base.metadata.create_all(engine) from here!
-# Run this ONCE manually or via a migration script:
-# python -c "from app import engine, Base; Base.metadata.create_all(engine)"
-
 # === Helper: time ago ===
 def time_ago(dt: datetime) -> str:
     if not dt:
@@ -68,6 +63,7 @@ def index():
     if request.method == "POST":
         user_id = request.form.get("user_id")
         status = request.form.get("status")
+        team = request.form.get("team")
 
         if not user_id or not status:
             return "Missing user_id or status", 400
@@ -79,10 +75,12 @@ def index():
             if existing:
                 existing.status = status
                 existing.updated_at = datetime.utcnow()
+                existing.team = team
             else:
                 new_status = UserStatus(
                     user_id=user_id,
                     status=status,
+                    team=team,
                     updated_at=datetime.utcnow()
                 )
                 session.add(new_status)
@@ -118,8 +116,10 @@ def dashboard():
         last_updated = None
         if statuses:
             last_updated = f"{statuses[0].updated_at.strftime('%b %d, %Y %I:%M %p')} ({time_ago(statuses[0].updated_at)})"
-
-        return render_template("dashboard.html", statuses=statuses, last_updated=last_updated, summary=summary)
+        team = request.args.get("team")
+        if team:
+            statuses = [s for s in statuses if s.team == team]
+        return render_template("dashboard.html", statuses=statuses, last_updated=last_updated, summary=summary, team=team)
 
     except OperationalError as e:
         app.logger.error(f"Database unreachable: {e}")
