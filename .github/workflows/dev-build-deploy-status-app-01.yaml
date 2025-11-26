@@ -1,10 +1,10 @@
-name: 01 - Build & Deploy Prod Status App
+name: dev-build-and-deploy-status-app-01
 on:
   push:
     branches: [ main ]
     paths:
-      - 'apps/prod_apps/status-app/**'
-      - '.github/workflows/01-build-and-deploy.yml'
+      - 'apps/dev_apps/status-app/**'
+      - '.github/workflows/dev-build-deploy-status-app-01.yaml'
   workflow_dispatch:
 
 jobs:
@@ -30,22 +30,22 @@ jobs:
         with:
           filters: |
             app-code:
-              - 'apps/prod_apps/status-app/**'
-              - '!apps/prod_apps/status-app/infra/**'
-              - '!apps/prod_apps/status-app/**/*.bicep'
-              - '!apps/prod_apps/status-app/**/*.json'
+              - 'apps/dev_apps/status-app/**'
+              - '!apps/dev_apps/status-app/infra/**'
+              - '!apps/dev_apps/status-app/**/*.bicep'
+              - '!apps/dev_apps/status-app/**/*.json'
             infra:
-              - 'apps/prod_apps/status-app/infra/**'
-              - 'apps/prod_apps/status-app/**/*.bicep'
-              - 'apps/prod_apps/status-app/**/*.json'
+              - 'apps/dev_apps/status-app/infra/**'
+              - 'apps/dev_apps/status-app/**/*.bicep'
+              - 'apps/dev_apps/status-app/**/*.json'
 
       - name: Build and Push Image
         if: steps.changes.outputs.app-code == 'true'
-        working-directory: apps/prod_apps/status-app/app
+        working-directory: apps/dev_apps/status-app/app
         run: |
-          IMAGE="${{ vars.ACR_NAME_PROD }}.azurecr.io/status-app"
+          IMAGE="${{ vars.ACR_NAME_DEV }}.azurecr.io/status-app"
           SHA=$(git rev-parse --short HEAD)
-          az acr login --name ${{ vars.ACR_NAME_PROD }}
+          az acr login --name ${{ vars.ACR_NAME_DEV }}
           docker build -t $IMAGE:latest -t $IMAGE:$SHA .
           docker push $IMAGE:latest
           docker push $IMAGE:$SHA
@@ -68,7 +68,7 @@ jobs:
             Install-Module -Name Az -Scope CurrentUser -Repository PSGallery -Force -AllowClobber -SkipPublisherCheck
           }
           Import-Module Az.Accounts, Az.Resources, Az.KeyVault, Az.Websites, Az.Storage
-          & "$env:GITHUB_WORKSPACE/apps/prod_apps/status-app/infra/deploy-prod-status-app.ps1"
+          & "$env:GITHUB_WORKSPACE/apps/dev_apps/status-app/infra/deploy-dev-status-app.ps1"
         env:
           POSTGRES_PASSWORD: ${{ secrets.POSTGRES_PASSWORD }}
           AZURE_TENANT_ID: ${{ vars.AZURE_TENANT_ID }}
@@ -83,30 +83,26 @@ jobs:
             --query value -o tsv)
           echo "DB_CONNECTION_STRING=$secret" >> $GITHUB_ENV
 
-      - name: Run Alembic migrations
-        working-directory: apps/prod_apps/status-app/app
-        run: |
-          pip install -r requirements.txt
-          alembic upgrade head
-        env:
-          DB_CONNECTION_STRING: ${{ env.DB_CONNECTION_STRING }}
 
-      - name: Seed Database
+      - name: Initialize Database Schema
         if: steps.deploy.outcome == 'success'
         run: |
-          echo "Seeding the database..."
-          python apps/prod_apps/status-app/app/init_db.py
-        env:
-          DB_CONNECTION_STRING: ${{ env.DB_CONNECTION_STRING }}
+          echo "Running init_db.py against Postgres in ACI..."
+          docker run --rm \
+            -e DB_CONNECTION_STRING="${{ env.DB_CONNECTION_STRING }}" \
+            ${{ vars.ACR_NAME_DEV }}.azurecr.io/status-app:${{ env.IMAGE_TAG }} \
+            python /app/init_db.py
 
       - name: Update App Service Container
         env:
           APP_SERVICE_NAME: ${{ steps.deploy.outputs.APP_SERVICE_NAME }}
-          RESOURCE_GROUP_NAME: ${{ steps.deploy.outputs.RESOURCE_GROUP_NAME }}
+          RESOURCE_GROUP_NAME: ${{ steps.deploy.outputs.resourceGroupName }}
         run: |
           az webapp config container set \
             --name $APP_SERVICE_NAME \
             --resource-group $RESOURCE_GROUP_NAME \
-            --docker-custom-image-name ${{ vars.ACR_NAME_PROD }}.azurecr.io/status-app:${{ env.IMAGE_TAG }}
-            --container-image-name ${{ vars.ACR_NAME_PROD }}.azurecr.io/status-app:${{ env.IMAGE_TAG }} \
-
+            --docker-custom-image-name ${{ vars.ACR_NAME_DEV }}.azurecr.io/status-app:${{ env.IMAGE_TAG }} \
+            --container-image-name ${{ vars.ACR_NAME_DEV }}.azurecr.io/status-app:${{ env.IMAGE_TAG }} \
+            --container-registry-url https://${{ vars.ACR_NAME_DEV }}.azurecr.io \
+            --container-registry-user ${{ secrets.ACR_USERNAME }} \
+            --container-registry-password ${{ secrets.ACR_PASSWORD }}
