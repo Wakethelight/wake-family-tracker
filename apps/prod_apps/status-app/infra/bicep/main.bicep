@@ -29,15 +29,12 @@ module db 'modules/postgres-flex.bicep' = {
     version: postgres.version
     tier: postgres.tier
     skuName: postgres.skuName
-    vCores: postgres.vCores
     storageSizeGB: postgres.storageSizeGB
     backupRetentionDays: postgres.backupRetentionDays
     highAvailability: postgres.highAvailability
-    zone: postgres.zone
     delegatedSubnetId: net.outputs.appSubnetId
     privateDnsZoneId: net.outputs.privateDnsZoneId
     serverParameters: postgres.serverParameters
-    requireSsl: postgres.requireSsl
   }
 }
 

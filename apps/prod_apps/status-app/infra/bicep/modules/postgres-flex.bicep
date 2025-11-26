@@ -62,7 +62,6 @@ param requireSsl bool
 resource server 'Microsoft.DBforPostgreSQL/flexibleservers@2023-03-01-preview' = {
   name: serverName
   location: location
-  zones: highAvailability == 'ZoneRedundant' ? [] : [zone]
   sku: {
     name: skuName
     tier: tier
@@ -74,7 +73,6 @@ resource server 'Microsoft.DBforPostgreSQL/flexibleservers@2023-03-01-preview' =
     storage: {
       storageSizeGB: storageSizeGB
       autoGrow: 'Enabled'
-      iops: 500 // adjust as needed
     }
     backup: {
       backupRetentionDays: backupRetentionDays
@@ -83,22 +81,22 @@ resource server 'Microsoft.DBforPostgreSQL/flexibleservers@2023-03-01-preview' =
     network: {
       delegatedSubnetResourceId: delegatedSubnetId
       privateDnsZoneArmResourceId: privateDnsZoneId
-      publicNetworkAccess: 'Disabled'
     }
     highAvailability: {
       mode: highAvailability
-      state: 'Enabled'
     }
-    authentication: {
+    authConfig: {
       activeDirectoryAuth: 'Disabled'
       passwordAuth: 'Enabled'
     }
     createMode: 'Default'
     dataEncryption: {
-      primaryKeyUri: '' // optionally use CMK later
+      primaryKeyURI: '' // optionally use CMK later
       type: 'SystemManaged'
     }
-    sslEnforcement: requireSsl ? 'Enabled' : 'Disabled'
+    authConfig: {
+      sslEnforcement: requireSsl ? 'Enabled' : 'Disabled'
+    }
   }
   tags: {
     workload: 'status-app'
