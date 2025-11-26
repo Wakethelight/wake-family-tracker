@@ -41,9 +41,9 @@ jobs:
 
       - name: Build and Push Image
         if: steps.changes.outputs.app-code == 'true'
-        working-directory: apps/prod_apps/status-app
+        working-directory: apps/prod_apps/status-app/app
         run: |
-          IMAGE="${{ vars.ACR_NAME_PROD }}.azurecr.io/status-app/app"
+          IMAGE="${{ vars.ACR_NAME_PROD }}.azurecr.io/status-app"
           SHA=$(git rev-parse --short HEAD)
           az acr login --name ${{ vars.ACR_NAME_PROD }}
           docker build -t $IMAGE:latest -t $IMAGE:$SHA .

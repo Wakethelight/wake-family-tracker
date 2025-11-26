@@ -41,7 +41,7 @@ jobs:
 
       - name: Build and Push Image
         if: steps.changes.outputs.app-code == 'true'
-        working-directory: apps/dev_apps/status-app
+        working-directory: apps/dev_apps/status-app/app
         run: |
           IMAGE="${{ vars.ACR_NAME_DEV }}.azurecr.io/status-app"
           SHA=$(git rev-parse --short HEAD)
