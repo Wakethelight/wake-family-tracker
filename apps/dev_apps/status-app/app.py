@@ -109,7 +109,7 @@ def dashboard():
         # Summary counts
         summary = {
             "remote": session.query(UserStatus.user_id).filter(UserStatus.status == "remote").distinct().count(),
-            "home": session.query(UserStatus.user_id).filter(UserStatus.status == "home").distinct().count(),
+            "office": session.query(UserStatus.user_id).filter(UserStatus.status == "office").distinct().count(),
             "leave": session.query(UserStatus.user_id).filter(UserStatus.status == "leave").distinct().count(),
         }
 
