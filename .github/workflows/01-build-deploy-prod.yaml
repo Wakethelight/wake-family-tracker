@@ -1,0 +1,112 @@
+name: 01 - Build & Deploy Prod Status App
+on:
+  push:
+    branches: [ main ]
+    paths:
+      - 'apps/prod_apps/status-app/**'
+      - '.github/workflows/01-build-and-deploy.yml'
+  workflow_dispatch:
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Azure Login (OIDC)
+        uses: azure/login@v2
+        with:
+          client-id: ${{ vars.AZURE_CLIENT_ID }}
+          tenant-id: ${{ vars.AZURE_TENANT_ID }}
+          subscription-id: ${{ vars.AZURE_SUBSCRIPTION_ID }}
+          enable-AzPSSession: true
+
+      - name: Detect Changes
+        id: changes
+        uses: dorny/paths-filter@v3
+        with:
+          filters: |
+            app-code:
+              - 'apps/prod_apps/status-app/**'
+              - '!apps/prod_apps/status-app/infra/**'
+              - '!apps/prod_apps/status-app/**/*.bicep'
+              - '!apps/prod_apps/status-app/**/*.json'
+            infra:
+              - 'apps/prod_apps/status-app/infra/**'
+              - 'apps/prod_apps/status-app/**/*.bicep'
+              - 'apps/prod_apps/status-app/**/*.json'
+
+      - name: Build and Push Image
+        if: steps.changes.outputs.app-code == 'true'
+        working-directory: apps/prod_apps/status-app
+        run: |
+          IMAGE="${{ vars.ACR_NAME_PROD }}.azurecr.io/status-app/app"
+          SHA=$(git rev-parse --short HEAD)
+          az acr login --name ${{ vars.ACR_NAME_PROD }}
+          docker build -t $IMAGE:latest -t $IMAGE:$SHA .
+          docker push $IMAGE:latest
+          docker push $IMAGE:$SHA
+          echo "IMAGE_TAG=$SHA" >> $GITHUB_ENV
+          echo "New image built: $IMAGE:$SHA"
+
+      - name: Reuse Latest Image
+        if: steps.changes.outputs.app-code != 'true'
+        run: |
+          echo "No code changes → reusing latest image"
+          echo "IMAGE_TAG=latest" >> $GITHUB_ENV
+
+      - name: Deploy Infrastructure
+        id: deploy
+        if: steps.changes.outputs.infra == 'true' || steps.changes.outputs.app-code == 'true'
+        shell: pwsh
+        run: |
+          $azVersion = (Get-Module -ListAvailable -Name Az | Sort-Object Version -Descending | Select-Object -First 1 -ExpandProperty Version)
+          if (-not $azVersion -or [version]$azVersion -lt [version]"15.0.0") {
+            Install-Module -Name Az -Scope CurrentUser -Repository PSGallery -Force -AllowClobber -SkipPublisherCheck
+          }
+          Import-Module Az.Accounts, Az.Resources, Az.KeyVault, Az.Websites, Az.Storage
+          & "$env:GITHUB_WORKSPACE/apps/prod_apps/status-app/infra/deploy-prod-status-app.ps1"
+        env:
+          POSTGRES_PASSWORD: ${{ secrets.POSTGRES_PASSWORD }}
+          AZURE_TENANT_ID: ${{ vars.AZURE_TENANT_ID }}
+          AZURE_SUBSCRIPTION_ID: ${{ vars.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Fetch DB Connection String from Key Vault
+        run: |
+          echo "Fetching db-connection-string from Key Vault..."
+          secret=$(az keyvault secret show \
+            --vault-name ${{ steps.deploy.outputs.VAULT_NAME }} \
+            --name db-connection-string \
+            --query value -o tsv)
+          echo "DB_CONNECTION_STRING=$secret" >> $GITHUB_ENV
+
+      - name: Run Alembic migrations
+        working-directory: apps/prod_apps/status-app/app
+        run: |
+          pip install -r requirements.txt
+          alembic upgrade head
+        env:
+          DB_CONNECTION_STRING: ${{ env.DB_CONNECTION_STRING }}
+
+      - name: Seed Database
+        if: steps.deploy.outcome == 'success'
+        run: |
+          echo "Seeding the database..."
+          python apps/prod_apps/status-app/app/init_db.py
+        env:
+          DB_CONNECTION_STRING: ${{ env.DB_CONNECTION_STRING }}
+
+      - name: Update App Service Container
+        env:
+          APP_SERVICE_NAME: ${{ steps.deploy.outputs.APP_SERVICE_NAME }}
+          RESOURCE_GROUP_NAME: ${{ steps.deploy.outputs.RESOURCE_GROUP_NAME }}
+        run: |
+          az webapp config container set \
+            --name $APP_SERVICE_NAME \
+            --resource-group $RESOURCE_GROUP_NAME \
+            --docker-custom-image-name ${{ vars.ACR_NAME_PROD }}.azurecr.io/status-app:${{ env.IMAGE_TAG }}
+            --container-image-name ${{ vars.ACR_NAME_PROD }}.azurecr.io/status-app:${{ env.IMAGE_TAG }} \
+

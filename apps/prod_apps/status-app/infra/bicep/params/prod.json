@@ -1,0 +1,53 @@
+{
+  "parameters": {
+    "environment": { "value": "prod" },
+    "location": { "value": "eastus" },
+    "app": {
+      "value": {
+        "name": "statusapp-prod",
+        "planSku": "P1v3",
+        "acrLoginServer": "acrwakeprod01.azurecr.io",
+        "vaultName": "kv-wake-prod",
+        "vaultResourceGroup": "rg-prod-kv-wake-prod",
+        "acrName": "acrwakeprod01",
+        "acrResourceGroup": "rg-prod-acrwakeprod01"
+      }
+    },
+    "postgres": {
+      "value": {
+        "serverName": "wakeprodpg01",
+        "dbName": "statusdb",
+        "adminUser": "pgadmin",
+        "adminPassword": {
+          "reference": {
+            "keyVault": {
+              "id": "/subscriptions/bb8f3354-1ce0-4efc-b2a7-8506304c5362/resourceGroups/rg-prod-kv-wake-prod/providers/Microsoft.KeyVault/vaults/kv-wake-prod"
+            },
+            "secretName": "postgres-admin-password"
+          }
+        },
+        "version": "16",
+        "tier": "Burstable",
+        "skuName": "B_Standard_B1ms",
+        "vCores": 1,
+        "storageSizeGB": 64,
+        "backupRetentionDays": 7,
+        "highAvailability": "Disabled",
+        "zone": "1",
+        "serverParameters": [
+          { "name": "log_min_duration_statement", "value": "2000" }
+        ],
+        "requireSsl": true
+      }
+    },
+    "network": {
+      "value": {
+        "vnetName": "wake-prod-vnet",
+        "addressPrefix": "10.30.0.0/16",
+        "appSubnetPrefix": "10.30.1.0/24",
+        "peSubnetPrefix": "10.30.2.0/24",
+        "dnsZoneName": "privatelink.postgres.database.azure.com"
+      }
+    }
+  }
+}

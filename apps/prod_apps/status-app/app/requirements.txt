@@ -1,0 +1,8 @@
+flask
+sqlalchemy
+psycopg2-binary
+alembic
+gunicorn
+azure-identity
+azure-keyvault-secrets
+python-dotenv  # For local .env

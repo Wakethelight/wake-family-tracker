@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Status App</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <!-- Navigation    -->
+    <nav>
+        <a href="{{ url_for('index') }}">Set Status</a> |
+        <a href="{{ url_for('dashboard') }}">View Dashboard</a>
+    </nav>
+    
+    <h1>Set Your Status</h1>
+    <form method="POST">
+        <label>User ID:</label>
+        <input type="text" name="user_id" required>
+        <label>Status:</label>
+        <select name="status" required>
+            <option value="remote">Remote</option>
+            <option value="office">Office</option>
+            <option value="leave">Leave</option>
+        </select>
+        <label>Team:</label>
+        <input type="text" name="team">
+        <button type="submit">Submit</button>
+    </form>
+
+</body>
+</html>
