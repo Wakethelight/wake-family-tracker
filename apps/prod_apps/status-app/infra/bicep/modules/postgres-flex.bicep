@@ -34,9 +34,6 @@ param backupRetentionDays int
 @description('High availability mode: Disabled, ZoneRedundant.')
 param highAvailability string
 
-@description('Availability zone for single-zone deployments (e.g., 1, 2, 3).')
-param zone string = '1'
-
 @description('Delegated subnet resource ID for private networking.')
 param delegatedSubnetId string
 
@@ -55,8 +52,6 @@ param serverParameters array = [
   }
 ]
 
-@description('Whether to require TLS on connections.')
-param requireSsl bool
 
 // Server
 resource server 'Microsoft.DBforPostgreSQL/flexibleservers@2023-03-01-preview' = {
@@ -88,14 +83,12 @@ resource server 'Microsoft.DBforPostgreSQL/flexibleservers@2023-03-01-preview' =
     authConfig: {
       activeDirectoryAuth: 'Disabled'
       passwordAuth: 'Enabled'
+      requireSsl: 'Enabled'
     }
     createMode: 'Default'
     dataEncryption: {
       primaryKeyURI: '' // optionally use CMK later
       type: 'SystemManaged'
-    }
-    authConfig: {
-      sslEnforcement: requireSsl ? 'Enabled' : 'Disabled'
     }
   }
   tags: {
