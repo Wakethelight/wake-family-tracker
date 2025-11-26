@@ -25,9 +25,6 @@ param tier string
 @description('SKU name mapping to vCores (e.g., GP_Standard_D2s_v3).')
 param skuName string
 
-@description('Number of vCores. Must match SKU family.')
-param vCores int
-
 @description('Storage size in GB.')
 param storageSizeGB int
 
@@ -69,7 +66,6 @@ resource server 'Microsoft.DBforPostgreSQL/flexibleservers@2023-03-01-preview' =
   sku: {
     name: skuName
     tier: tier
-    capacity: vCores
   }
   properties: {
     version: version
@@ -111,13 +107,15 @@ resource server 'Microsoft.DBforPostgreSQL/flexibleservers@2023-03-01-preview' =
 
 // DB
 resource database 'Microsoft.DBforPostgreSQL/flexibleservers/databases@2023-03-01-preview' = {
-  name: '${server.name}/${dbName}'
+  parent: server
+  name: dbName
   properties: {}
 }
 
 // Server parameters
 resource paramSet 'Microsoft.DBforPostgreSQL/flexibleservers/configurations@2023-03-01-preview' = [for p in serverParameters: {
-  name: '${server.name}/${p.name}'
+  parent: server
+  name: p.name
   properties: {
     value: p.value
     source: 'user-override'
