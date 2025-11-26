@@ -110,16 +110,14 @@ def dashboard():
         summary = {
             "remote": session.query(UserStatus.user_id).filter(UserStatus.status == "remote").distinct().count(),
             "home": session.query(UserStatus.user_id).filter(UserStatus.status == "home").distinct().count(),
-            "office": session.query(UserStatus.user_id).filter(UserStatus.status == "office").distinct().count(),
+            "leave": session.query(UserStatus.user_id).filter(UserStatus.status == "leave").distinct().count(),
         }
 
         last_updated = None
         if statuses:
             last_updated = f"{statuses[0].updated_at.strftime('%b %d, %Y %I:%M %p')} ({time_ago(statuses[0].updated_at)})"
-        team = request.args.get("team")
-        if team:
-            statuses = [s for s in statuses if s.team == team]
-        return render_template("dashboard.html", statuses=statuses, last_updated=last_updated, summary=summary, team=team)
+
+        return render_template("dashboard.html", statuses=statuses, last_updated=last_updated, summary=summary)
 
     except OperationalError as e:
         app.logger.error(f"Database unreachable: {e}")

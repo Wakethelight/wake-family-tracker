@@ -25,12 +25,14 @@
         <tr>
             <th>User</th>
             <th>Status</th>
+            <th>Team</th>
             <th>Updated At</th>
         </tr>
         {% for s in statuses %}
         <tr>
             <td>{{ s.user_id }}</td>
             <td>{{ s.status }}</td>
+            <td>{{ s.team }}</td>
             <td>
               {{ s.updated_at.strftime("%b %d, %Y %I:%M %p") }} ({{ s.updated_at|timeago }})
             </td>
