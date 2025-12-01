@@ -1,5 +1,4 @@
 param location string
-param environment string
 param appName string
 param acrName string
 param vaultName string
@@ -13,7 +12,7 @@ resource plan 'Microsoft.Web/serverfarms@2023-12-01' = {
 }
 
 resource app 'Microsoft.Web/sites@2023-12-01' = {
-  name: '${appName}-${environment}'
+  name: appName
   location: location
   properties: {
     serverFarmId: plan.id

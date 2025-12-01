@@ -3,17 +3,16 @@
   "contentVersion": "1.0.0.0",
   "parameters": {
     "environment": { "value": "dev" },
-    "appName": { "value": "statusapp" },
     "location": { "value": "centralus" },
     "app": {
       "value": {
-        "name": "statusapp-prod",
+        "name": "statusapp-dev-01",
         "planSku": "B1",
-        "acrLoginServer": "acrwakeprod01.azurecr.io",
-        "vaultName": "kv-wake-prod",
-        "vaultResourceGroup": "rg-prod-kv-wake-prod",
-        "acrName": "acrwakeprod01",
-        "acrResourceGroup": "rg-prod-acrwakeprod01"
+        "acrLoginServer": "acrwakedevd01.azurecr.io",
+        "vaultName": "kv-wake-dev",
+        "vaultResourceGroup": "rg-dev-kv-wake-dev",
+        "acrName": "acrwakedev01",
+        "acrResourceGroup": "rg-dev-acrwakedev01"
       }
     },
 

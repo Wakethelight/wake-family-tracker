@@ -41,7 +41,6 @@ module web 'modules/appService.bicep' = {
   name: 'web-deploy'
   params: {
     location: location
-    environment: environment
     appName: app.name
     acrName: app.acrName
     vaultName: app.vaultName
