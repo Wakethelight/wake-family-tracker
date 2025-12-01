@@ -4,6 +4,7 @@
   "parameters": {
     "environment": { "value": "prod" },
     "location": { "value": "centralus" },
+    "subscriptionId": { "value": "bb8f3354-1ce0-4efc-b2a7-8506304c5362" },
     "app": {
       "value": {
         "name": "statusapp-prod",

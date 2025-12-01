@@ -89,15 +89,6 @@ if (-not (Get-AzResourceGroup -Name $resourceGroupName -ErrorAction SilentlyCont
 }
 
 # ================================
-# 7. check for postgress-admin-password secrets
-# ================================
-$secret = Get-AzKeyVaultSecret -VaultName $config.VaultName -Name postgresPassword -ErrorAction SilentlyContinue
-if ([string]::IsNullOrWhiteSpace($adminPassword)) {
-    Write-Error "Admin password is empty — check Key Vault secret value."
-    exit 1
-}
-$adminPassword = [System.Net.NetworkCredential]::new("", $secret.SecretValue).Password
-# ================================
 # 8. DEPLOY BICEP
 # ================================
 $bicepFile = Join-Path $PSScriptRoot "bicep/main.bicep"
@@ -109,7 +100,6 @@ New-AzResourceGroupDeployment `
     -ResourceGroupName $resourceGroupName `
     -TemplateFile $bicepFile `
     -TemplateParameterFile $parameterFile `
-    -adminPassword $adminPassword `
     -Verbose
 
 $deployment = Get-AzResourceGroupDeployment -ResourceGroupName $resourceGroupName -Name $deploymentName

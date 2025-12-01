@@ -3,10 +3,10 @@ targetScope = 'resourceGroup'
 param environment string
 param location string
 @secure()
-param adminPassword string
 param app object
 param postgres object
 param network object
+param subscriptionId string
 
 module net 'modules/network.bicep' = {
   name: 'network'
@@ -20,6 +20,11 @@ module net 'modules/network.bicep' = {
   }
 }
 
+resource kv 'Microsoft.KeyVault/vaults@2025-05-01' existing = {
+  name: app.vaultName
+  scope: resourceGroup(subscriptionId, app.vaultResourceGroup)
+}
+
 module db 'modules/postgres-flex.bicep' = {
   name: 'postgres'
   params: {
@@ -27,7 +32,7 @@ module db 'modules/postgres-flex.bicep' = {
     serverName: postgres.serverName
     dbName: postgres.dbName
     adminUser: postgres.adminUser
-    adminPassword: adminPassword
+    adminPassword: kv.getSecret('postgres-admin-password')
     version: postgres.version
     tier: postgres.tier
     skuName: postgres.skuName
