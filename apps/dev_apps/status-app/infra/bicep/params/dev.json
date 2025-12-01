@@ -8,10 +8,10 @@
       "value": {
         "name": "statusapp-dev-01",
         "planSku": "B1",
-        "acrLoginServer": "acrwakedevd01.azurecr.io",
         "vaultName": "kv-wake-dev",
         "vaultResourceGroup": "rg-dev-kv-wake-dev",
         "acrName": "acrwakedev01",
+        "acrLoginServer": "acrwakedevd01.azurecr.io",
         "acrResourceGroup": "rg-dev-acrwakedev01"
       }
     },

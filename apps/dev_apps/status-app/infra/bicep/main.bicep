@@ -42,7 +42,7 @@ module web 'modules/appService.bicep' = {
   params: {
     location: location
     appName: app.name
-    acrName: app.acrName
+    acrLoginServer: app.acrLoginServer
     vaultName: app.vaultName
     planSku: app.planSku
   }
