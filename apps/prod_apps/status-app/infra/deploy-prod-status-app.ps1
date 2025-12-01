@@ -57,7 +57,6 @@ $config = $envConfig[$Environment]
 # ================================
 $TenantId = $env:AZURE_TENANT_ID
 $SubscriptionId = $env:AZURE_SUBSCRIPTION_ID
-$PostgresPassword = $env:POSTGRES_PASSWORD
 if (-not $TenantId -or -not $SubscriptionId) {
     Write-Error "AZURE_TENANT_ID and AZURE_SUBSCRIPTION_ID must be set in GitHub Secrets/Variables"
     exit 1
@@ -91,6 +90,7 @@ if (-not (Get-AzResourceGroup -Name $resourceGroupName -ErrorAction SilentlyCont
 # ================================
 # 7. POSTGRES PASSWORD (secure handling)
 # ================================
+<#
 if ($env:GITHUB_ACTIONS) {
     if (-not $PostgresPassword) {
         Write-Error "POSTGRES_PASSWORD secret is missing!"
@@ -102,6 +102,7 @@ if ($env:GITHUB_ACTIONS) {
     $postgresPasswordPlain = [Runtime.InteropServices.Marshal]::PtrToStringAuto(
         [Runtime.InteropServices.Marshal]::SecureStringToBSTR($sec))
 }
+#>
 # ================================
 # 8. DEPLOY BICEP
 # ================================
@@ -114,7 +115,6 @@ New-AzResourceGroupDeployment `
     -ResourceGroupName $resourceGroupName `
     -TemplateFile $bicepFile `
     -TemplateParameterFile $parameterFile `
-    -postgresPassword (ConvertTo-SecureString $postgresPasswordPlain -AsPlainText -Force) `
     -Verbose
 $deployment = Get-AzResourceGroupDeployment -ResourceGroupName $resourceGroupName -Name $deploymentName
 
