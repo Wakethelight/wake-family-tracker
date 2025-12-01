@@ -2,9 +2,8 @@ name: Refresh Postgres Image in ACRs
 
 on:
   schedule:
-    # Run at 3 AM on the 1st of every month
     - cron: "0 3 1 * *"
-  workflow_dispatch: # allow manual trigger
+  workflow_dispatch:
 
 jobs:
   refresh-postgres:
@@ -14,6 +13,7 @@ jobs:
       contents: read
     env:
       POSTGRES_IMAGE: "postgres:18-alpine"
+
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -25,20 +25,21 @@ jobs:
           tenant-id: ${{ vars.AZURE_TENANT_ID }}
           subscription-id: ${{ vars.AZURE_SUBSCRIPTION_ID }}
 
-      # --- Pull image ---
-      - name: Pull latest Postgres image
-        run: docker pull ${POSTGRES_IMAGE}
+      - name: Pull Postgres image
+        run: docker pull $POSTGRES_IMAGE
 
       # --- Dev ACR ---
       - name: Log in to Dev ACR
         run: az acr login --name ${{ vars.ACR_NAME_DEV }}
 
-          docker tag ${POSTGRES_IMAGE} ${{ vars.DEV_ACR_NAME }}.azurecr.io/${POSTGRES_IMAGE}
-          docker tag ${POSTGRES_IMAGE} ${{ vars.DEV_ACR_NAME }}.azurecr.io/postgres:latest
+      - name: Tag image for Dev ACR
+        run: |
+          docker tag $POSTGRES_IMAGE ${{ vars.DEV_ACR_NAME }}.azurecr.io/postgres:18-alpine
+          docker tag $POSTGRES_IMAGE ${{ vars.DEV_ACR_NAME }}.azurecr.io/postgres:latest
 
       - name: Push image to Dev ACR
         run: |
-          docker push ${{ vars.DEV_ACR_NAME }}.azurecr.io/${POSTGRES_IMAGE}
+          docker push ${{ vars.DEV_ACR_NAME }}.azurecr.io/postgres:18-alpine
           docker push ${{ vars.DEV_ACR_NAME }}.azurecr.io/postgres:latest
 
       # --- Prod ACR ---
@@ -47,10 +48,10 @@ jobs:
 
       - name: Tag image for Prod ACR
         run: |
-          docker tag ${POSTGRES_IMAGE} ${{ vars.PROD_ACR_NAME }}.azurecr.io/${POSTGRES_IMAGE}
-          docker tag ${POSTGRES_IMAGE} ${{ vars.PROD_ACR_NAME }}.azurecr.io/postgres:latest
+          docker tag $POSTGRES_IMAGE ${{ vars.PROD_ACR_NAME }}.azurecr.io/postgres:18-alpine
+          docker tag $POSTGRES_IMAGE ${{ vars.PROD_ACR_NAME }}.azurecr.io/postgres:latest
 
       - name: Push image to Prod ACR
         run: |
-          docker push ${{ vars.PROD_ACR_NAME }}.azurecr.io/${POSTGRES_IMAGE}
+          docker push ${{ vars.PROD_ACR_NAME }}.azurecr.io/postgres:18-alpine
           docker push ${{ vars.PROD_ACR_NAME }}.azurecr.io/postgres:latest
