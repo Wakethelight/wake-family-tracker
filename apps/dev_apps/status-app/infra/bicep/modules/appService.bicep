@@ -3,12 +3,12 @@ param environment string
 param appName string
 param acrName string
 param vaultName string
-param appServicePlanSku string
+param planSku string
 
 resource plan 'Microsoft.Web/serverfarms@2023-12-01' = {
   name: '${appName}-plan'
   location: location
-  sku: { name: appServicePlanSku }
+  sku: { name: planSku }
   properties: { reserved: true }
 }
 
@@ -29,5 +29,5 @@ resource app 'Microsoft.Web/sites@2023-12-01' = {
   identity: { type: 'SystemAssigned' }
 }
 
-output identityPrincipalId string = app.identity.principalId  // System-assigned identity
 output appServiceName string = app.name
+output principalId string = app.identity.principalId

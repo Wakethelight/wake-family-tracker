@@ -92,13 +92,11 @@ if (-not (Get-AzResourceGroup -Name $resourceGroupName -ErrorAction SilentlyCont
 # 7. check for postgress-admin-password secret
 # ================================
 $secret = Get-AzKeyVaultSecret -VaultName $($config.VaultName) -Name postgres-admin-password -ErrorAction SilentlyContinue
-if (-not $secret) {
-    Write-Error "Secret 'postgres-admin-password' not found in vault $($config.VaultName)"
+if ([string]::IsNullOrWhiteSpace($adminPassword)) {
+    Write-Error "Admin password is empty — check Key Vault secret value."
     exit 1
 }
-$adminPassword = $secret.SecretValueText
-
-
+$adminPassword = [System.Net.NetworkCredential]::new("", $secret.SecretValue).Password
 # ================================
 # 8. DEPLOY BICEP
 # ================================

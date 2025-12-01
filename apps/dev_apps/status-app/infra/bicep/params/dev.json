@@ -5,16 +5,30 @@
     "environment": { "value": "dev" },
     "appName": { "value": "statusapp" },
     "location": { "value": "centralus" },
-    "acrName": { "value": "acrwakedev01" },
-    "vaultName": { "value": "kv-wake-dev" },
-    "appServicePlanSku": { "value": "B1" },
-    "dnsLabel": { "value": "statusdb-dev-01" },
-    "aciContainerGroupName": { "value": "statusdb-aci" },
-    "postgresImage": { "value": "postgres:15-alpine" },
-    "postgresCpu": { "value": 1 },
-    "postgresMemoryGb": { "value": 2 },
-    "osType": { "value": "Linux" },
-    "postgresDbName": { "value": "statusdb" },
-    "postgresUser": { "value": "postgres" }
+    "app": {
+      "value": {
+        "name": "statusapp-prod",
+        "planSku": "B1",
+        "acrLoginServer": "acrwakeprod01.azurecr.io",
+        "vaultName": "kv-wake-prod",
+        "vaultResourceGroup": "rg-prod-kv-wake-prod",
+        "acrName": "acrwakeprod01",
+        "acrResourceGroup": "rg-prod-acrwakeprod01"
+      }
+    },
+
+    "postgres": {
+      "value": {
+        "dbName": "statusdb-dev-01",
+        "serverName": "wakeprodpg01",
+        "postgresUser": "pgadmin",
+        "postgresDbName": "statusdb",
+        "postgresImage": "postgres:15-alpine",
+        "postgresCpu": 1,
+        "postgresMemoryGb": 2,
+        "aciContainerGroupName": "statusdb-aci",
+        "osType": "Linux"
+      }
+    }
   }
 }
