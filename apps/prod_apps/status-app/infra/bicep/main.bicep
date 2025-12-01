@@ -2,6 +2,8 @@ targetScope = 'resourceGroup'
 
 param environment string
 param location string
+@secure()
+param adminPassword string
 param app object
 param postgres object
 param network object
@@ -25,7 +27,7 @@ module db 'modules/postgres-flex.bicep' = {
     serverName: postgres.serverName
     dbName: postgres.dbName
     adminUser: postgres.adminUser
-    adminPassword: postgres.adminPassword
+    adminPassword: adminPassword
     version: postgres.version
     tier: postgres.tier
     skuName: postgres.skuName
