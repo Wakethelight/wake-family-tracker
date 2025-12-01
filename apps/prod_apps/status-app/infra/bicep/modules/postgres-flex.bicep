@@ -3,6 +3,9 @@ targetScope = 'resourceGroup'
 @description('Azure region')
 param location string
 
+@description('Tenant ID for Active Directory authentication.')
+param tenantId string
+
 @description('Server name (unique within resource group).')
 param serverName string
 
@@ -83,7 +86,7 @@ resource server 'Microsoft.DBforPostgreSQL/flexibleservers@2023-03-01-preview' =
     authConfig: {
       activeDirectoryAuth: 'Disabled'
       passwordAuth: 'Enabled'
-      requireSsl: 'Enabled'
+      tenantId: tenantId
     }
     createMode: 'Default'
     dataEncryption: {

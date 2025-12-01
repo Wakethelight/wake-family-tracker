@@ -35,6 +35,7 @@ module db 'modules/postgres-flex.bicep' = {
     delegatedSubnetId: net.outputs.appSubnetId
     privateDnsZoneId: net.outputs.privateDnsZoneId
     serverParameters: postgres.serverParameters
+    tenantId: postgres.tenantId
   }
 }
 

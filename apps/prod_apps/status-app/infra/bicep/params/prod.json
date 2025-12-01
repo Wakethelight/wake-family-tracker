@@ -29,6 +29,7 @@
         "version": "16",
         "tier": "Burstable",
         "skuName": "B_Standard_B1ms",
+        "tenantId": "72f988bf-86f1-41af-91ab-2d7cd011db47",
         "vCores": 1,
         "storageSizeGB": 64,
         "backupRetentionDays": 7,
@@ -36,8 +37,7 @@
         "zone": "1",
         "serverParameters": [
           { "name": "log_min_duration_statement", "value": "2000" }
-        ],
-        "requireSsl": true
+        ]
       }
     },
     "network": {
