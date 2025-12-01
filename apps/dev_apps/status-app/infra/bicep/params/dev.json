@@ -19,6 +19,7 @@
     "postgres": {
       "value": {
         "dbName": "statusdb-dev-01",
+        "dnsLabel": "statusdb-dev-01-wake",
         "serverName": "wakeprodpg01",
         "postgresUser": "pgadmin",
         "postgresDbName": "statusdb",

@@ -91,7 +91,7 @@ if (-not (Get-AzResourceGroup -Name $resourceGroupName -ErrorAction SilentlyCont
 # ================================
 # 7. check for postgress-admin-password secrets
 # ================================
-$secret = Get-AzKeyVaultSecret -VaultName $($config.VaultName) -Name postgres-admin-password -ErrorAction SilentlyContinue
+$secret = Get-AzKeyVaultSecret -VaultName $config.VaultName -Name postgresPassword -ErrorAction SilentlyContinue
 if ([string]::IsNullOrWhiteSpace($adminPassword)) {
     Write-Error "Admin password is empty — check Key Vault secret value."
     exit 1
