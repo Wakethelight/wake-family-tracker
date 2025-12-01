@@ -53,9 +53,10 @@ module dbSecret 'modules/keyvault-secrets.bicep' = {
   params: {
     vaultName: app.vaultName
     secretName: 'db-connection-string'
-    secretValue: 'postgresql://${postgres.adminUser}:${postgres.adminPassword}@${aci.outputs.dbFqdn}:5432/${postgres.dbName}?sslmode=enabled'
+    secretValue: 'postgresql://${postgres.postgresUser}:${postgresPassword}@${aci.outputs.dbFqdn}:5432/${postgres.postgresDbName}?sslmode=enabled'
   }
 }
+
 
 //
 // RBAC: assign Key Vault Secrets User at the vault’s RG
