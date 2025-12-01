@@ -9,6 +9,9 @@ on:
 jobs:
   refresh-postgres:
     runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+      contents: read
     env:
       POSTGRES_IMAGE: "postgres:18-alpine"
     steps:
