@@ -109,7 +109,7 @@ Write-Host "Deploying Bicep with deployment name: $deploymentName"
 New-AzResourceGroupDeployment `
     -Name $deploymentName `
     -ResourceGroupName $resourceGroupName `
-    -TemplateFile $bicepFile `s
+    -TemplateFile $bicepFile `
     -TemplateParameterFile $parameterFile `
     -adminPassword $adminPassword `
     -Verbose
