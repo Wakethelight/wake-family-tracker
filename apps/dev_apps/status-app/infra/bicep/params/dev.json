@@ -11,16 +11,15 @@
         "vaultName": "kv-wake-dev",
         "vaultResourceGroup": "rg-dev-kv-wake-dev",
         "acrName": "acrwakedev01",
-        "acrLoginServer": "acrwakedevd01.azurecr.io",
+        "acrLoginServer": "acrwakedev01.azurecr.io",
         "acrResourceGroup": "rg-dev-acrwakedev01"
       }
     },
-
     "postgres": {
       "value": {
         "dbName": "statusdb-dev-01",
         "dnsLabel": "statusdb-dev-01-wake",
-        "serverName": "wakeprodpg01",
+        "serverName": "wakedevpg01",
         "postgresUser": "pgadmin",
         "postgresDbName": "statusdb",
         "postgresImage": "acrwakedev01.azurecr.io/postgres:latest",
@@ -30,5 +29,6 @@
         "osType": "Linux"
       }
     }
+
   }
 }
