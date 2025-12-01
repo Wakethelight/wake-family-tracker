@@ -6,9 +6,14 @@ on:
   workflow_dispatch:       # allows manual trigger too
 
 jobs:
-  purge:
+  Purge-Old-Images:
     runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+      contents: read
     steps:
+      - uses: actions/checkout@v4
+
       - name: Azure Login (OIDC)
         uses: azure/login@v2
         with:
@@ -16,7 +21,7 @@ jobs:
           tenant-id: ${{ vars.AZURE_TENANT_ID }}
           subscription-id: ${{ vars.AZURE_SUBSCRIPTION_ID }}
           enable-AzPSSession: true
-
+          
       - name: Purge Old dev Images
         run: |
           az acr run --registry ${{ vars.ACR_NAME_DEV }} \
