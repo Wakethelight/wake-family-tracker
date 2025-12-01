@@ -18,6 +18,9 @@ param osType string
 resource containerGroup 'Microsoft.ContainerInstance/containerGroups@2023-05-01' = {
   name: containerGroupName
   location: location
+  identity: {
+  type: 'SystemAssigned'
+  }
   properties: {
     osType: osType
     restartPolicy: 'Always'
@@ -78,3 +81,4 @@ resource containerGroup 'Microsoft.ContainerInstance/containerGroups@2023-05-01'
 }
 
 output dbFqdn string = containerGroup.properties.ipAddress.fqdn
+output containerGroupPrincipalId string = containerGroup.identity.principalId

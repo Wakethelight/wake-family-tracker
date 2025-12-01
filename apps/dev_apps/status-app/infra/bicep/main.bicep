@@ -70,17 +70,26 @@ module kvRbac 'modules/rbac-keyvault.bicep' = {
   }
 }
 
-//
-// RBAC: assign AcrPull at the ACR’s RG
-//
-module acrRbac 'modules/rbac-acr.bicep' = {
-  name: 'rbac-acr'
+// RBAC: assign AcrPull at the ACR’s RG for Web App
+module acrRbacWeb 'modules/rbac-acr.bicep' = {
+  name: 'rbac-acr-web'
   scope: resourceGroup(app.acrResourceGroup)
   params: {
     acrName: app.acrName
     principalId: web.outputs.principalId
   }
 }
+
+// RBAC: assign AcrPull at the ACR’s RG for ACI
+module acrRbacAci 'modules/rbac-acr.bicep' = {
+  name: 'rbac-acr-aci'
+  scope: resourceGroup(app.acrResourceGroup)
+  params: {
+    acrName: app.acrName
+    principalId: aci.outputs.containerGroupPrincipalId
+  }
+}
+
 
 output dbFqdn string = aci.outputs.dbFqdn
 output storageAccountName string = storage.outputs.storageAccountName
