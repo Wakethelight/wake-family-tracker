@@ -87,22 +87,7 @@ if (-not (Get-AzResourceGroup -Name $resourceGroupName -ErrorAction SilentlyCont
     New-AzResourceGroup -Name $resourceGroupName -Location $config.Location -Tag $config.Tags | Out-Null
     Write-Host "Created resource group $resourceGroupName"
 }
-# ================================
-# 7. POSTGRES PASSWORD (secure handling)
-# ================================
-<#
-if ($env:GITHUB_ACTIONS) {
-    if (-not $PostgresPassword) {
-        Write-Error "POSTGRES_PASSWORD secret is missing!"
-        exit 1
-    }
-    $postgresPasswordPlain = $PostgresPassword
-} else {
-    $sec = Read-Host "Enter Postgres admin password" -AsSecureString
-    $postgresPasswordPlain = [Runtime.InteropServices.Marshal]::PtrToStringAuto(
-        [Runtime.InteropServices.Marshal]::SecureStringToBSTR($sec))
-}
-#>
+
 # ================================
 # 8. DEPLOY BICEP
 # ================================
@@ -116,6 +101,7 @@ New-AzResourceGroupDeployment `
     -TemplateFile $bicepFile `
     -TemplateParameterFile $parameterFile `
     -Verbose
+    
 $deployment = Get-AzResourceGroupDeployment -ResourceGroupName $resourceGroupName -Name $deploymentName
 
 # ================================

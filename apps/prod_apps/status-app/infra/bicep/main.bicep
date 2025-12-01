@@ -45,7 +45,7 @@ module dbSecret 'modules/keyvault-secrets.bicep' = {
   params: {
     vaultName: app.vaultName
     secretName: 'db-connection-string'
-    secretValue: 'postgresql://${postgres.adminUser}:${postgres.adminPassword}@${db.outputs.fqdn}:5432/${postgres.dbName}?sslmode=disable'
+    secretValue: 'postgresql://${postgres.adminUser}:${postgres.adminPassword}@${db.outputs.fqdn}:5432/${postgres.dbName}?sslmode=enabled'
   }
 }
 
