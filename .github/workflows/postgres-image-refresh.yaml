@@ -27,18 +27,18 @@ jobs:
 
       # --- Pull image ---
       - name: Pull latest Postgres image
-        run: docker pull postgres:${POSTGRES_IMAGE}
+        run: docker pull ${POSTGRES_IMAGE}
 
       # --- Dev ACR ---
       - name: Log in to Dev ACR
         run: az acr login --name ${{ vars.ACR_NAME_DEV }}
 
-          docker tag postgres:${POSTGRES_IMAGE} ${{ vars.DEV_ACR_NAME }}.azurecr.io/postgres:${POSTGRES_IMAGE}
-          docker tag postgres:${POSTGRES_IMAGE} ${{ vars.DEV_ACR_NAME }}.azurecr.io/postgres:latest
+          docker tag ${POSTGRES_IMAGE} ${{ vars.DEV_ACR_NAME }}.azurecr.io/${POSTGRES_IMAGE}
+          docker tag ${POSTGRES_IMAGE} ${{ vars.DEV_ACR_NAME }}.azurecr.io/postgres:latest
 
       - name: Push image to Dev ACR
         run: |
-          docker push ${{ vars.DEV_ACR_NAME }}.azurecr.io/postgres:${POSTGRES_IMAGE}
+          docker push ${{ vars.DEV_ACR_NAME }}.azurecr.io/${POSTGRES_IMAGE}
           docker push ${{ vars.DEV_ACR_NAME }}.azurecr.io/postgres:latest
 
       # --- Prod ACR ---
@@ -47,10 +47,10 @@ jobs:
 
       - name: Tag image for Prod ACR
         run: |
-          docker tag postgres:${POSTGRES_VERSION} ${{ vars.PROD_ACR_NAME }}.azurecr.io/postgres:${POSTGRES_VERSION}
-          docker tag postgres:${POSTGRES_VERSION} ${{ vars.PROD_ACR_NAME }}.azurecr.io/postgres:latest
+          docker tag ${POSTGRES_IMAGE} ${{ vars.PROD_ACR_NAME }}.azurecr.io/${POSTGRES_IMAGE}
+          docker tag ${POSTGRES_IMAGE} ${{ vars.PROD_ACR_NAME }}.azurecr.io/postgres:latest
 
       - name: Push image to Prod ACR
         run: |
-          docker push ${{ vars.PROD_ACR_NAME }}.azurecr.io/postgres:${POSTGRES_VERSION}
+          docker push ${{ vars.PROD_ACR_NAME }}.azurecr.io/${POSTGRES_IMAGE}
           docker push ${{ vars.PROD_ACR_NAME }}.azurecr.io/postgres:latest
