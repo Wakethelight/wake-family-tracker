@@ -1,0 +1,53 @@
+name: Refresh Postgres Image in ACRs
+
+on:
+  schedule:
+    # Run at 3 AM on the 1st of every month
+    - cron: "0 3 1 * *"
+  workflow_dispatch: # allow manual trigger
+
+jobs:
+  refresh-postgres:
+    runs-on: ubuntu-latest
+    env:
+      POSTGRES_IMAGE: "postgres:18-alpine"
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Log in to Azure
+        uses: azure/login@v2
+        with:
+          client-id: ${{ vars.AZURE_CLIENT_ID }}
+          tenant-id: ${{ vars.AZURE_TENANT_ID }}
+          subscription-id: ${{ vars.AZURE_SUBSCRIPTION_ID }}
+
+      # --- Pull image ---
+      - name: Pull latest Postgres image
+        run: docker pull postgres:${POSTGRES_IMAGE}
+
+      # --- Dev ACR ---
+      - name: Log in to Dev ACR
+        run: az acr login --name ${{ vars.ACR_NAME_DEV }}
+
+          docker tag postgres:${POSTGRES_IMAGE} ${{ vars.DEV_ACR_NAME }}.azurecr.io/postgres:${POSTGRES_IMAGE}
+          docker tag postgres:${POSTGRES_IMAGE} ${{ vars.DEV_ACR_NAME }}.azurecr.io/postgres:latest
+
+      - name: Push image to Dev ACR
+        run: |
+          docker push ${{ vars.DEV_ACR_NAME }}.azurecr.io/postgres:${POSTGRES_IMAGE}
+          docker push ${{ vars.DEV_ACR_NAME }}.azurecr.io/postgres:latest
+
+      # --- Prod ACR ---
+      - name: Log in to Prod ACR
+        run: az acr login --name ${{ vars.ACR_NAME_PROD }}
+
+      - name: Tag image for Prod ACR
+        run: |
+          docker tag postgres:${POSTGRES_VERSION} ${{ vars.PROD_ACR_NAME }}.azurecr.io/postgres:${POSTGRES_VERSION}
+          docker tag postgres:${POSTGRES_VERSION} ${{ vars.PROD_ACR_NAME }}.azurecr.io/postgres:latest
+
+      - name: Push image to Prod ACR
+        run: |
+          docker push ${{ vars.PROD_ACR_NAME }}.azurecr.io/postgres:${POSTGRES_VERSION}
+          docker push ${{ vars.PROD_ACR_NAME }}.azurecr.io/postgres:latest

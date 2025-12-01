@@ -23,7 +23,7 @@
         "serverName": "wakeprodpg01",
         "postgresUser": "pgadmin",
         "postgresDbName": "statusdb",
-        "postgresImage": "postgres:15-alpine",
+        "postgresImage": "acrwakedevd01.azurecr.io/postgres:latest",
         "postgresCpu": 1,
         "postgresMemoryGb": 2,
         "aciContainerGroupName": "statusdb-aci",
