@@ -3,7 +3,7 @@
   "contentVersion": "1.0.0.0",
   "parameters": {
     "environment": { "value": "prod" },
-    "location": { "value": "eastus" },
+    "location": { "value": "centralus" },
     "app": {
       "value": {
         "name": "statusapp-prod",
@@ -30,7 +30,7 @@
         "highAvailability": "Disabled",
         "zone": "1",
         "serverParameters": [
-          { "name": "log_min_duration_statement", "value": "2000" }
+          { "name": "log_min_duration_statement", "value": "2000"  }
         ]
       }
     },

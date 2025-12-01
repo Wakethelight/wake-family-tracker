@@ -100,8 +100,9 @@ New-AzResourceGroupDeployment `
     -ResourceGroupName $resourceGroupName `
     -TemplateFile $bicepFile `
     -TemplateParameterFile $parameterFile `
+    -adminPassword (Get-AzKeyVaultSecret -VaultName $config.VaultName -Name postgres-admin-password).SecretValueText `
     -Verbose
-    
+
 $deployment = Get-AzResourceGroupDeployment -ResourceGroupName $resourceGroupName -Name $deploymentName
 
 # ================================

@@ -25,7 +25,7 @@ module db 'modules/postgres-flex.bicep' = {
     serverName: postgres.serverName
     dbName: postgres.dbName
     adminUser: postgres.adminUser
-    adminPassword: pgSecret.outputs.secretValue
+    adminPassword: postgres.adminPassword
     version: postgres.version
     tier: postgres.tier
     skuName: postgres.skuName
@@ -36,15 +36,6 @@ module db 'modules/postgres-flex.bicep' = {
     privateDnsZoneId: net.outputs.privateDnsZoneId
     serverParameters: postgres.serverParameters
     tenantId: postgres.tenantId
-  }
-}
-module pgSecret 'modules/keyvault-secrets.bicep' = {
-  name: 'postgres-admin-secret'
-  scope: resourceGroup(app.vaultResourceGroup)
-  params: {
-    vaultName: app.vaultName
-    secretName: 'postgres-admin-password'
-    secretValue: postgres.adminPassword
   }
 }
 
