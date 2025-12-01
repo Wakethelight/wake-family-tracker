@@ -89,6 +89,17 @@ if (-not (Get-AzResourceGroup -Name $resourceGroupName -ErrorAction SilentlyCont
 }
 
 # ================================
+# 7. check for postgress-admin-password secret
+# ================================
+$secret = Get-AzKeyVaultSecret -VaultName $config.VaultName -Name postgres-admin-password -ErrorAction SilentlyContinue
+if (-not $secret) {
+    Write-Error "Secret 'postgres-admin-password' not found in vault $($config.VaultName)"
+    exit 1
+}
+$adminPassword = $secret.SecretValueText
+
+
+# ================================
 # 8. DEPLOY BICEP
 # ================================
 $bicepFile = Join-Path $PSScriptRoot "bicep/main.bicep"
@@ -100,7 +111,7 @@ New-AzResourceGroupDeployment `
     -ResourceGroupName $resourceGroupName `
     -TemplateFile $bicepFile `
     -TemplateParameterFile $parameterFile `
-    -adminPassword (Get-AzKeyVaultSecret -VaultName $config.VaultName -Name postgres-admin-password).SecretValueText `
+    -adminPassword $adminPassword `
     -Verbose
 
 $deployment = Get-AzResourceGroupDeployment -ResourceGroupName $resourceGroupName -Name $deploymentName
