@@ -7,7 +7,7 @@
     "app": {
       "value": {
         "name": "statusapp-prod",
-        "planSku": "P1v3",
+        "planSku": "B1",
         "acrLoginServer": "acrwakeprod01.azurecr.io",
         "vaultName": "kv-wake-prod",
         "vaultResourceGroup": "rg-prod-kv-wake-prod",
@@ -20,14 +20,6 @@
         "serverName": "wakeprodpg01",
         "dbName": "statusdb",
         "adminUser": "pgadmin",
-        "adminPassword": {
-          "reference": {
-            "keyVault": {
-              "id": "/subscriptions/bb8f3354-1ce0-4efc-b2a7-8506304c5362/resourceGroups/rg-prod-kv-wake-prod/providers/Microsoft.KeyVault/vaults/kv-wake-prod"
-            },
-            "secretName": "postgres-admin-password"
-          }
-        },
         "version": "16",
         "tier": "Burstable",
         "skuName": "B_Standard_B1ms",

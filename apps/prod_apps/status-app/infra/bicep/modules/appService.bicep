@@ -9,7 +9,7 @@ param keyVaultName string
 resource plan 'Microsoft.Web/serverfarms@2023-01-01' = {
   name: '${appName}-${environment}-plan'
   location: location
-  sku: { name: planSku, tier: 'PremiumV3', capacity: 1 }
+  sku: { name: planSku }
   properties: { reserved: true }
   tags: {
     environment: environment
