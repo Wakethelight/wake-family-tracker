@@ -82,7 +82,7 @@ module kvRbac 'modules/rbac-keyvault.bicep' = {
 }
 
 //
-// RBAC: assign AcrPull at the ACR’s RG
+// RBAC: assign AcrPull at the ACR’s RGs
 //
 module acrRbac 'modules/rbac-acr.bicep' = {
   name: 'rbac-acr'

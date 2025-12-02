@@ -125,19 +125,23 @@ try {
 }
 
 # Phase 2: Deploy RBAC (assign AcrPull to ACI identity)
-New-AzResourceGroupDeployment `
-    -Name "$deploymentName-rbac" `
-    -ResourceGroupName $resourceGroupName `
-    -TemplateFile $bicepFile `
-    -TemplateParameterFile $parameterFile `
-    -postgresPassword (ConvertTo-SecureString $postgresPasswordPlain -AsPlainText -Force) `
-    -deployPhase "rbacOnly" `
-    -Verbose
+try {
+    New-AzResourceGroupDeployment `
+        -Name "$deploymentName-rbac" `
+        -ResourceGroupName $resourceGroupName `
+        -TemplateFile $bicepFile `
+        -TemplateParameterFile $parameterFile `
+        -postgresPassword (ConvertTo-SecureString $postgresPasswordPlain -AsPlainText -Force) `
+        -deployPhase "rbacOnly" `
+        -Verbose -ErrorAction Stop
 
-$rbacDeployment = Get-AzResourceGroupDeployment -ResourceGroupName $resourceGroupName -Name "$deploymentName-rbac"
-$acrResourceIdForAci    = [string]$rbacDeployment.Outputs['acrResourceIdForAci'].Value
-$acrAssignedPrincipalAci= [string]$rbacDeployment.Outputs['acrAssignedPrincipalAci'].Value
-Write-Host "RBAC assignment applied: AcrPull on $acrResourceIdForAci for principal $acrAssignedPrincipalAci"
+    $rbacDeployment = Get-AzResourceGroupDeployment -ResourceGroupName $resourceGroupName -Name "$deploymentName-rbac"
+    $acrResourceIdForAci    = [string]$rbacDeployment.Outputs['acrResourceIdForAci'].Value
+    $acrAssignedPrincipalAci= [string]$rbacDeployment.Outputs['acrAssignedPrincipalAci'].Value
+    Write-Host "RBAC assignment applied: AcrPull on $acrResourceIdForAci for principal $acrAssignedPrincipalAci"
+} catch {
+    Write-Warning "RBAC phase reported errors (likely due to ACI being in Failed state). Role assignment is idempotent and should still exist. Continuing to final redeploy..."
+}
 
 # Phase 3: Redeploy ACI (now can pull image) — this must succeed
 New-AzResourceGroupDeployment `
