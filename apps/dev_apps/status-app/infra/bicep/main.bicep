@@ -8,6 +8,8 @@ param environment string
 param location string
 param app object
 param postgres object
+param acr object
+param keyvault object
 @secure()
 param postgresPassword string
 @secure()
@@ -26,8 +28,8 @@ module web 'modules/appService.bicep' = {
   params: {
     location: location
     appName: app.name
-    acrLoginServer: app.acrLoginServer
-    vaultName: app.vaultName
+    acrLoginServer: acr.loginServer
+    vaultName: keyvault.name
     planSku: app.planSku
   }
 }
@@ -47,17 +49,17 @@ module aci 'modules/aci.bicep' = if (deployPhase == 'aciOnly' || deployPhase == 
     postgresMemoryGb: postgres.postgresMemoryGb
     postgresDbName: postgres.postgresDbName
     postgresUser: postgres.postgresUser
-    acrAdminUsername: postgres.acrAdminUsername
+    acrAdminUsername: acr.adminUsername
     acrAdminPassword: acrAdminPassword
-    acrName: postgres.acrName
+    acrName: acr.name
   }
 }
 
 module dbSecret 'modules/keyvault-secrets.bicep' = {
   name: 'db-connection-secret'
-  scope: resourceGroup(app.vaultResourceGroup)
+  scope: resourceGroup(keyvault.resourceGroup)
   params: {
-    vaultName: app.vaultName
+    vaultName: keyvault.name
     secretName: 'db-connection-string'
     secretValue: 'postgresql://${postgres.postgresUser}:${postgresPassword}@${aci.outputs.dbFqdn}:5432/${postgres.postgresDbName}?sslmode=disabled'
   }
@@ -66,9 +68,9 @@ module dbSecret 'modules/keyvault-secrets.bicep' = {
 // RBAC: Key Vault Secrets User for Web App
 module kvRbac 'modules/rbac-keyvault.bicep' = {
   name: 'rbac-kv'
-  scope: resourceGroup(app.vaultResourceGroup)
+  scope: resourceGroup(keyvault.resourceGroup)
   params: {
-    vaultName: app.vaultName
+    vaultName: keyvault.name
     principalId: web.outputs.principalId
   }
 }
@@ -76,9 +78,9 @@ module kvRbac 'modules/rbac-keyvault.bicep' = {
 // RBAC: AcrPull for Web App
 module acrRbacWeb 'modules/rbac-acr.bicep' = {
   name: 'rbac-acr-web'
-  scope: resourceGroup(app.acrResourceGroup)
+  scope: resourceGroup(acr.resourceGroup)
   params: {
-    acrName: postgres.acrName
+    acrName: acr.name
     principalId: web.outputs.principalId
   }
 }
@@ -86,9 +88,9 @@ module acrRbacWeb 'modules/rbac-acr.bicep' = {
 // RBAC: AcrPull for ACI
 module acrRbacAci 'modules/rbac-acr.bicep' = if (deployPhase == 'rbacOnly' || deployPhase == 'full') {
   name: 'rbac-acr-aci'
-  scope: resourceGroup(app.acrResourceGroup)
+  scope: resourceGroup(acr.resourceGroup)
   params: {
-    acrName: postgres.acrName
+    acrName: acr.name
     principalId: aci.outputs.containerGroupPrincipalId
   }
 }
