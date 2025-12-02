@@ -1,18 +1,16 @@
-targetScope = 'resourceGroup'
-
 param vaultName string
 param secretName string
+param fqdn string
+param dbName string
+param adminUser string
 @secure()
-param secretValue string
+param adminPassword string
 
-resource kv 'Microsoft.KeyVault/vaults@2023-07-01' existing = {
-  name: vaultName
-}
+var connectionString = 'postgresql://${adminUser}:${adminPassword}@${fqdn}:5432/${dbName}?sslmode=enabled'
 
 resource secret 'Microsoft.KeyVault/vaults/secrets@2023-07-01' = {
-  parent: kv
-  name: secretName
+  name: '${vaultName}/${secretName}'
   properties: {
-    value: secretValue
+    value: connectionString
   }
 }

@@ -2,11 +2,11 @@ targetScope = 'resourceGroup'
 
 param environment string
 param location string
-@secure()
 param app object
 param postgres object
 param network object
 param subscriptionId string
+
 
 module net 'modules/network.bicep' = {
   name: 'network'
@@ -52,7 +52,11 @@ module dbSecret 'modules/keyvault-secrets.bicep' = {
   params: {
     vaultName: app.vaultName
     secretName: 'db-connection-string'
-    secretValue: 'postgresql://${postgres.adminUser}:${postgres.adminPassword}@${db.outputs.fqdn}:5432/${postgres.dbName}?sslmode=enabled'
+    // ✅ pass components separately
+    fqdn: db.outputs.fqdn
+    dbName: postgres.dbName
+    adminUser: postgres.adminUser
+    adminPassword: kv.getSecret('postgres-admin-password')
   }
 }
 

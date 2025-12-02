@@ -143,15 +143,37 @@ try {
     Write-Warning "RBAC phase reported errors (likely due to ACI being in Failed state). Role assignment is idempotent and should still exist. Continuing to final redeploy..."
 }
 
-# Phase 3: Redeploy ACI (now can pull image) — this must succeed
-New-AzResourceGroupDeployment `
-    -Name "$deploymentName-aci-redeploy" `
-    -ResourceGroupName $resourceGroupName `
-    -TemplateFile $bicepFile `
-    -TemplateParameterFile $parameterFile `
-    -postgresPassword (ConvertTo-SecureString $postgresPasswordPlain -AsPlainText -Force) `
-    -deployPhase "aciOnly" `
-    -Verbose -ErrorAction Stop
+# Phase 3: Redeploy ACI (now can pull image) with retry loop
+$maxRetries = 3
+$retryCount = 0
+$success = $false
+
+while (-not $success -and $retryCount -lt $maxRetries) {
+    try {
+        $attemptName = "$deploymentName-aci-redeploy-$retryCount"
+        New-AzResourceGroupDeployment `
+            -Name $attemptName `
+            -ResourceGroupName $resourceGroupName `
+            -TemplateFile $bicepFile `
+            -TemplateParameterFile $parameterFile `
+            -postgresPassword (ConvertTo-SecureString $postgresPasswordPlain -AsPlainText -Force) `
+            -deployPhase "aciOnly" `
+            -Verbose -ErrorAction Stop
+
+        $success = $true
+        Write-Host "ACI redeploy succeeded on attempt $($retryCount+1)" -ForegroundColor Green
+        $deployment = Get-AzResourceGroupDeployment -ResourceGroupName $resourceGroupName -Name $attemptName
+    } catch {
+        $retryCount++
+        if ($retryCount -lt $maxRetries) {
+            Write-Warning "ACI redeploy attempt $retryCount failed (likely RBAC propagation). Retrying in 30s..."
+            Start-Sleep -Seconds 30
+        } else {
+            Write-Error "ACI redeploy failed after $maxRetries attempts. Check ACR permissions and image availability."
+            exit 1
+        }
+    }
+}
 
 # Get outputs from the final ACI redeploy
 $deployment = Get-AzResourceGroupDeployment -ResourceGroupName $resourceGroupName -Name "$deploymentName-aci-redeploy"
