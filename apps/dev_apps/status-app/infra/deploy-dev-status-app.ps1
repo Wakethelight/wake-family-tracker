@@ -104,9 +104,7 @@ if ($env:GITHUB_ACTIONS) {
     $postgresPasswordPlain = [Runtime.InteropServices.Marshal]::PtrToStringAuto(
         [Runtime.InteropServices.Marshal]::SecureStringToBSTR($sec))
 }
-# ================================
-# 8. DEPLOY BICEP (three phases)
-# ================================
+
 # ================================
 # 8. DEPLOY BICEP (single phase with admin creds)
 # ================================
@@ -114,16 +112,22 @@ $bicepFile = Join-Path $PSScriptRoot "bicep/main.bicep"
 $parameterFile = Join-Path $PSScriptRoot "bicep/params/$Environment.json"
 $deploymentName = "statusapp-deploy-$(Get-Date -Format 'yyyyMMdd-HHmmss')"
 Write-Host "Deploying Bicep with deployment name: $deploymentName"
-
-New-AzResourceGroupDeployment `
-    -Name $deploymentName `
-    -ResourceGroupName $resourceGroupName `
-    -TemplateFile $bicepFile `
-    -TemplateParameterFile $parameterFile `
-    -postgresPassword (ConvertTo-SecureString $postgresPasswordPlain -AsPlainText -Force) `
-    -acrAdminPassword (ConvertTo-SecureString $acrPassword -AsPlainText -Force) `
-    -Verbose -ErrorAction Stop
-
+try{
+    New-AzResourceGroupDeployment `
+        -Name $deploymentName `
+        -ResourceGroupName $resourceGroupName `
+        -TemplateFile $bicepFile `
+        -TemplateParameterFile $parameterFile `
+        -postgresPassword (ConvertTo-SecureString $postgresPasswordPlain -AsPlainText -Force) `
+        -acrAdminPassword (ConvertTo-SecureString $acrPassword -AsPlainText -Force) `
+        -Verbose -ErrorAction Stop
+} catch {
+    if ($_.Exception.Message -like "*RoleAssignmentExists*") {
+        Write-Warning "Role assignment already exists, continuing..."
+    } else {
+        throw
+    }
+}
 # Get outputs from the deployment
 $deployment = Get-AzResourceGroupDeployment -ResourceGroupName $resourceGroupName -Name $deploymentName
 
