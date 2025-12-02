@@ -135,12 +135,27 @@ $deployment = Get-AzResourceGroupDeployment -ResourceGroupName $resourceGroupNam
 # ================================
 # 9. GET DEPLOYMENT OUTPUTS
 # ================================
-$dbFQDN = [string]$deployment.Outputs['dbFqdn'].Value
-Write-Host "Database FQDN: $dbFQDN"
-$storageName = [string]$deployment.Outputs['storageAccountName'].Value
-$storageKey = [string]$deployment.Outputs['storageAccountKey'].Value
-$appServiceName = [string]$deployment.Outputs['appServiceName'].Value
-Write-Host "Storage Account: $storageName"
+if ($deployment.Outputs.ContainsKey('dbFqdn') -and $deployment.Outputs['dbFqdn']) {
+    $dbFqdn = [string]$deployment.Outputs['dbFqdn'].Value
+} else {
+    Write-Warning "dbFqdn output missing"
+}
+if ($deployment.Outputs.ContainsKey('storageAccountName')) {
+    $storageName = [string]$deployment.Outputs['storageAccountName'].Value
+    Write-Host "Storage Account: $storageName"
+} else {
+    Write-Warning "storageAccountName output not found"
+}
+if ($deployment.Outputs.ContainsKey('storageAccountKey')) {
+    $storageKey = [string]$deployment.Outputs['storageAccountKey'].Value
+} else {
+    Write-Warning "storageAccountKey output not found"
+}
+if ($deployment.Outputs.ContainsKey('appServiceName')) {
+    $appServiceName = [string]$deployment.Outputs['appServiceName'].Value
+} else {
+    Write-Warning "appServiceName output not found"
+}
 # ================================
 # 10. UPLOAD init.sql
 # ================================

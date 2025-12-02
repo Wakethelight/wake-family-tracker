@@ -92,13 +92,19 @@ module acrRbacAci 'modules/rbac-acr.bicep' = {
   }
 }
 
-output dbFqdn string = aci.outputs.dbFqdn
-output storageAccountName string = storage.outputs.storageAccountName
-output storageAccountKey string = storage.outputs.storageAccountKey
-output appServiceName string = web.outputs.appServiceName
-output postgresUser string = postgres.postgresUser
-output postgresDbName string = postgres.postgresDbName
+// Guarded outputs: emit empty string if module output is missing
+output dbFqdn string = empty(aci.outputs.dbFqdn) ? '' : aci.outputs.dbFqdn
+output storageAccountName string = empty(storage.outputs.storageAccountName) ? '' : storage.outputs.storageAccountName
+output storageAccountKey string = empty(storage.outputs.storageAccountKey) ? '' : storage.outputs.storageAccountKey
+output appServiceName string = empty(web.outputs.appServiceName) ? '' : web.outputs.appServiceName
+output postgresUser string = empty(postgres.postgresUser) ? '' : postgres.postgresUser
+output postgresDbName string = empty(postgres.postgresDbName) ? '' : postgres.postgresDbName
 
-// Always safe: Web RBAC is unconditional
-output acrResourceIdForWeb string = acrRbacWeb.outputs.acrResourceId
-output acrAssignedPrincipalWeb string = acrRbacWeb.outputs.assignedPrincipalId
+// Always safe: Web RBAC
+output acrResourceIdForWeb string = empty(acrRbacWeb.outputs.acrResourceId) ? '' : acrRbacWeb.outputs.acrResourceId
+output acrAssignedPrincipalWeb string = empty(acrRbacWeb.outputs.assignedPrincipalId) ? '' : acrRbacWeb.outputs.assignedPrincipalId
+
+// Guarded: ACI RBAC
+output acrResourceIdForAci string = empty(acrRbacAci.outputs.acrResourceId) ? '' : acrRbacAci.outputs.acrResourceId
+output acrAssignedPrincipalAci string = empty(acrRbacAci.outputs.assignedPrincipalId) ? '' : acrRbacAci.outputs.assignedPrincipalId
+
