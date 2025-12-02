@@ -6,7 +6,8 @@ param app object
 param postgres object
 param network object
 param subscriptionId string
-
+@secure()
+param postgresPassword string
 
 module net 'modules/network.bicep' = {
   name: 'network'
@@ -32,7 +33,7 @@ module db 'modules/postgres-flex.bicep' = {
     serverName: postgres.serverName
     dbName: postgres.dbName
     adminUser: postgres.adminUser
-    adminPassword: kv.getSecret('postgres-admin-password')
+    adminPassword: postgresPassword
     version: postgres.version
     tier: postgres.tier
     skuName: postgres.skuName

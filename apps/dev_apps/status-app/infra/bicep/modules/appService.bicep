@@ -18,6 +18,8 @@ resource app 'Microsoft.Web/sites@2023-12-01' = {
     serverFarmId: plan.id
     siteConfig: {
       linuxFxVersion: 'DOCKER|${acrLoginServer}/status-app:latest'
+      acrUseManagedIdentityCreds: true
+      acrUserManagedIdentityID: ''
       appSettings: [
         { name: 'WEBSITE_CONTAINER_START_TIME_LIMIT', value: '300' }
         { name: 'WEBSITES_PORT', value: '8000' }
