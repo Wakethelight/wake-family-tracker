@@ -128,11 +128,9 @@ try{
         throw
     }
 }
-# Get outputs from the deployment
-$deployment = Get-AzResourceGroupDeployment -ResourceGroupName $resourceGroupName -Name $deploymentName
 
 # Get outputs from the deployment
-$deployment = Get-AzResourceGroupDeployment -ResourceGroupName $resourceGroupName -Name $deploymentName
+$deployment = Get-AzResourceGroupDeployment -ResourceGroupName $resourceGroupName -Name $deploymentName -IncludeOutputs
 
 # Helper function to safely extract outputs
 function Get-DeploymentOutputValue {
