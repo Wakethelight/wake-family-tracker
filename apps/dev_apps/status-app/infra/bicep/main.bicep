@@ -94,7 +94,8 @@ module acrRbacAci 'modules/rbac-acr.bicep' = if (deployPhase == 'rbacOnly' || de
     principalId: aci.outputs.containerGroupPrincipalId
   }
 }
-output dbFqdn string = aci.outputs.dbFqdn
+
+output dbFqdn string = (deployPhase == 'aciOnly' || deployPhase == 'full') ? aci.outputs.dbFqdn : ''
 output storageAccountName string = storage.outputs.storageAccountName
 output storageAccountKey string = storage.outputs.storageAccountKey
 output appServiceName string = web.outputs.appServiceName
