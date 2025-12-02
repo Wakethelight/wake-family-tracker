@@ -112,8 +112,10 @@ $bicepFile = Join-Path $PSScriptRoot "bicep/main.bicep"
 $parameterFile = Join-Path $PSScriptRoot "bicep/params/$Environment.json"
 $deploymentName = "statusapp-deploy-$(Get-Date -Format 'yyyyMMdd-HHmmss')"
 Write-Host "Deploying Bicep with deployment name: $deploymentName"
-try{
-    New-AzResourceGroupDeployment `
+
+try {
+    # Capture the deployment result directly
+    $deployment = New-AzResourceGroupDeployment `
         -Name $deploymentName `
         -ResourceGroupName $resourceGroupName `
         -TemplateFile $bicepFile `
@@ -129,9 +131,6 @@ try{
     }
 }
 
-# Get outputs from the deployment
-$deployment = Get-AzResourceGroupDeployment -ResourceGroupName $resourceGroupName -Name $deploymentName -IncludeOutput
-
 # Helper function to safely extract outputs
 function Get-DeploymentOutputValue {
     param(
@@ -140,7 +139,7 @@ function Get-DeploymentOutputValue {
         [Parameter(Mandatory=$true)]
         [string]$Key
     )
-    if ($Deployment.Outputs.ContainsKey($Key) -and $Deployment.Outputs[$Key]) {
+    if ($Deployment.Outputs -and $Deployment.Outputs.ContainsKey($Key) -and $Deployment.Outputs[$Key]) {
         return [string]$Deployment.Outputs[$Key].Value
     } else {
         Write-Warning "Deployment output '$Key' not found or empty"
@@ -155,7 +154,7 @@ $dbFqdn         = Get-DeploymentOutputValue -Deployment $deployment -Key "dbFqdn
 $storageName    = Get-DeploymentOutputValue -Deployment $deployment -Key "storageAccountName"
 $storageKey     = Get-DeploymentOutputValue -Deployment $deployment -Key "storageAccountKey"
 $appServiceName = Get-DeploymentOutputValue -Deployment $deployment -Key "appServiceName"
-$appServiceOutput = Get-DeploymentOutputValue -Deployment $deployment -Key "appServiceName"
+$appServiceOutput = $appServiceName
 
 Write-Host "DB FQDN: $dbFqdn"
 Write-Host "Storage Account: $storageName"
@@ -175,7 +174,7 @@ Set-AzStorageFileContent `
 Write-Host "Uploaded init.sql"
 
 # ================================
-# 13. ENSURE APP SERVICE IS RUNNING (renumbered from 13)
+# 11. ENSURE APP SERVICE IS RUNNING
 # ================================
 Write-Host "Ensuring App Service is running..." -ForegroundColor Yellow
 $app = Get-AzWebApp -ResourceGroupName $resourceGroupName -Name $appServiceName -ErrorAction Stop
@@ -192,7 +191,7 @@ else {
 }
 
 # ================================
-# 14. FINAL SUCCESS (renumbered)
+# 12. FINAL SUCCESS
 # ================================
 Write-Host "DEPLOYMENT COMPLETED SUCCESSFULLY!" -ForegroundColor Green
 Write-Host "App URL: https://$appServiceName.azurewebsites.net" -ForegroundColor Cyan
@@ -200,8 +199,6 @@ Write-Host "Emitting GitHub outputs..."
 "APP_SERVICE_NAME=$appServiceOutput" | Out-File -FilePath $env:GITHUB_OUTPUT -Append
 "resourceGroupName=$resourceGroupName" | Out-File -FilePath $env:GITHUB_OUTPUT -Append
 "VAULT_NAME=$($config.VaultName)" | Out-File -FilePath $env:GITHUB_OUTPUT -Append
-
-
 
 
 
