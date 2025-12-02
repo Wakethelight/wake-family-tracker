@@ -19,7 +19,7 @@ resource containerGroup 'Microsoft.ContainerInstance/containerGroups@2023-05-01'
   name: containerGroupName
   location: location
   identity: {
-  type: 'SystemAssigned'
+    type: 'SystemAssigned'
   }
   properties: {
     osType: osType
