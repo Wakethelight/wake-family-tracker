@@ -4,17 +4,30 @@
   "parameters": {
     "environment": { "value": "dev" },
     "location": { "value": "centralus" },
+
     "app": {
       "value": {
         "name": "statusapp-dev-01",
-        "planSku": "B1",
-        "vaultName": "kv-wake-dev",
-        "vaultResourceGroup": "rg-dev-kv-wake-dev",
-        "acrLoginServer": "acrwakedev01.azurecr.io",
-        "acrResourceGroup": "rg-dev-acrwakedev01"
-
+        "planSku": "B1"
       }
     },
+
+    "acr": {
+      "value": {
+        "name": "acrwakedev01",
+        "loginServer": "acrwakedev01.azurecr.io",
+        "resourceGroup": "rg-dev-acrwakedev01",
+        "adminUsername": "acrwakedev01"
+      }
+    },
+
+    "keyVault": {
+      "value": {
+        "name": "kv-wake-dev",
+        "resourceGroup": "rg-dev-kv-wake-dev"
+      }
+    },
+
     "postgres": {
       "value": {
         "dbName": "statusdb-dev-01",
@@ -26,11 +39,8 @@
         "postgresCpu": 1,
         "postgresMemoryGb": 2,
         "aciContainerGroupName": "statusdb-aci",
-        "osType": "Linux",
-        "acrAdminUsername": "acrwakedev01",
-        "acrName": "acrwakedev01"
+        "osType": "Linux"
       }
     }
-
   }
 }
