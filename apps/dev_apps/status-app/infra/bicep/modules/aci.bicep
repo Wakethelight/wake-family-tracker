@@ -14,6 +14,10 @@ param postgresMemoryGb int
 param postgresDbName string
 param postgresUser string
 param osType string
+param acrName string
+param acrAdminUsername string
+@secure()
+param acrAdminPassword string
 
 resource containerGroup 'Microsoft.ContainerInstance/containerGroups@2023-05-01' = {
   name: containerGroupName
@@ -34,6 +38,13 @@ resource containerGroup 'Microsoft.ContainerInstance/containerGroups@2023-05-01'
       ]
       dnsNameLabel: dnsLabel
     }
+    imageRegistryCredentials: [
+      {
+        server: '${acrName}.azurecr.io'
+        username: acrAdminUsername
+        password: acrAdminPassword
+      }
+    ]
     containers: [
       {
         name: 'postgres'

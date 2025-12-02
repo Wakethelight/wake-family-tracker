@@ -78,7 +78,7 @@ module acrRbacWeb 'modules/rbac-acr.bicep' = {
   name: 'rbac-acr-web'
   scope: resourceGroup(app.acrResourceGroup)
   params: {
-    acrName: app.acrName
+    acrName: postgres.acrName
     principalId: web.outputs.principalId
   }
 }
@@ -88,7 +88,7 @@ module acrRbacAci 'modules/rbac-acr.bicep' = if (deployPhase == 'rbacOnly' || de
   name: 'rbac-acr-aci'
   scope: resourceGroup(app.acrResourceGroup)
   params: {
-    acrName: app.acrName
+    acrName: postgres.acrName
     principalId: aci.outputs.containerGroupPrincipalId
   }
 }
