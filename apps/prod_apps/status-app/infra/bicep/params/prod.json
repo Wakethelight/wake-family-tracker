@@ -28,7 +28,7 @@
         "vCores": 1,
         "storageSizeGB": 64,
         "backupRetentionDays": 7,
-        "highAvailability": "Disabled",
+        "highAvailability": "SameZone",
         "zone": "1",
         "serverParameters": [
           { "name": "log_min_duration_statement", "value": "2000"  }

@@ -103,21 +103,26 @@ if ($env:GITHUB_ACTIONS) {
         [Runtime.InteropServices.Marshal]::SecureStringToBSTR($sec))
 }
 # ================================
-# 8. DEPLOY BICEP
+# 8. DEPLOY BICEP (three phases)
 # ================================
 $bicepFile = Join-Path $PSScriptRoot "bicep/main.bicep"
 $parameterFile = Join-Path $PSScriptRoot "bicep/params/$Environment.json"
 $deploymentName = "statusapp-deploy-$(Get-Date -Format 'yyyyMMdd-HHmmss')"
 Write-Host "Deploying Bicep with deployment name: $deploymentName"
-# Phase 1: Deploy ACI (identity created)
-New-AzResourceGroupDeployment `
-    -Name "$deploymentName-aci" `
-    -ResourceGroupName $resourceGroupName `
-    -TemplateFile $bicepFile `
-    -TemplateParameterFile $parameterFile `
-    -postgresPassword (ConvertTo-SecureString $postgresPasswordPlain -AsPlainText -Force) `
-    -deployPhase "aciOnly" `
-    -Verbose
+
+# Phase 1: Deploy ACI (identity created, container may fail to start)
+try {
+    New-AzResourceGroupDeployment `
+        -Name "$deploymentName-aci" `
+        -ResourceGroupName $resourceGroupName `
+        -TemplateFile $bicepFile `
+        -TemplateParameterFile $parameterFile `
+        -postgresPassword (ConvertTo-SecureString $postgresPasswordPlain -AsPlainText -Force) `
+        -deployPhase "aciOnly" `
+        -Verbose -ErrorAction Stop
+} catch {
+    Write-Warning "ACI phase failed to start container (expected). Identity still created. Continuing to RBAC phase..."
+}
 
 # Phase 2: Deploy RBAC (assign AcrPull to ACI identity)
 New-AzResourceGroupDeployment `
@@ -128,14 +133,13 @@ New-AzResourceGroupDeployment `
     -postgresPassword (ConvertTo-SecureString $postgresPasswordPlain -AsPlainText -Force) `
     -deployPhase "rbacOnly" `
     -Verbose
+
 $rbacDeployment = Get-AzResourceGroupDeployment -ResourceGroupName $resourceGroupName -Name "$deploymentName-rbac"
-
-$acrResourceIdForAci   = [string]$rbacDeployment.Outputs['acrResourceIdForAci'].Value
-$acrAssignedPrincipalAci = [string]$rbacDeployment.Outputs['acrAssignedPrincipalAci'].Value
-
+$acrResourceIdForAci    = [string]$rbacDeployment.Outputs['acrResourceIdForAci'].Value
+$acrAssignedPrincipalAci= [string]$rbacDeployment.Outputs['acrAssignedPrincipalAci'].Value
 Write-Host "RBAC assignment applied: AcrPull on $acrResourceIdForAci for principal $acrAssignedPrincipalAci"
 
-# Phase 3: Redeploy ACI (now can pull image)
+# Phase 3: Redeploy ACI (now can pull image) — this must succeed
 New-AzResourceGroupDeployment `
     -Name "$deploymentName-aci-redeploy" `
     -ResourceGroupName $resourceGroupName `
@@ -143,7 +147,7 @@ New-AzResourceGroupDeployment `
     -TemplateParameterFile $parameterFile `
     -postgresPassword (ConvertTo-SecureString $postgresPasswordPlain -AsPlainText -Force) `
     -deployPhase "aciOnly" `
-    -Verbose
+    -Verbose -ErrorAction Stop
 
 # Get outputs from the final ACI redeploy
 $deployment = Get-AzResourceGroupDeployment -ResourceGroupName $resourceGroupName -Name "$deploymentName-aci-redeploy"

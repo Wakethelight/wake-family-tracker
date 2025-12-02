@@ -57,17 +57,24 @@ param serverParameters array = [
 
 
 // Server
-resource server 'Microsoft.DBforPostgreSQL/flexibleservers@2023-03-01-preview' = {
+resource server 'Microsoft.DBforPostgreSQL/flexibleservers@2025-08-01' = {
   name: serverName
   location: location
   sku: {
     name: skuName
     tier: tier
   }
+  
   properties: {
+    availabilityZone: '' // optional, can be set via params if needed
     version: version
     administratorLogin: adminUser
     administratorLoginPassword: adminPassword
+    authConfig: {
+      activeDirectoryAuth: 'Disabled'
+      passwordAuth: 'Enabled'
+      tenantId: tenantId
+    }
     storage: {
       storageSizeGB: storageSizeGB
       autoGrow: 'Enabled'
@@ -83,11 +90,7 @@ resource server 'Microsoft.DBforPostgreSQL/flexibleservers@2023-03-01-preview' =
     highAvailability: {
       mode: highAvailability
     }
-    authConfig: {
-      activeDirectoryAuth: 'Disabled'
-      passwordAuth: 'Enabled'
-      tenantId: tenantId
-    }
+
     createMode: 'Default'
     dataEncryption: {
       primaryKeyURI: '' // optionally use CMK later
@@ -100,14 +103,14 @@ resource server 'Microsoft.DBforPostgreSQL/flexibleservers@2023-03-01-preview' =
 }
 
 // DB
-resource database 'Microsoft.DBforPostgreSQL/flexibleservers/databases@2023-03-01-preview' = {
+resource database 'Microsoft.DBforPostgreSQL/flexibleservers/databases@2025-08-01' = {
   parent: server
   name: dbName
   properties: {}
 }
 
 // Server parameters
-resource paramSet 'Microsoft.DBforPostgreSQL/flexibleservers/configurations@2023-03-01-preview' = [for p in serverParameters: {
+resource paramSet 'Microsoft.DBforPostgreSQL/flexibleservers/configurations@2025-08-01' = [for p in serverParameters: {
   parent: server
   name: p.name
   properties: {
