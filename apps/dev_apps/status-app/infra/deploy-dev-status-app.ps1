@@ -109,14 +109,45 @@ $bicepFile = Join-Path $PSScriptRoot "bicep/main.bicep"
 $parameterFile = Join-Path $PSScriptRoot "bicep/params/$Environment.json"
 $deploymentName = "statusapp-deploy-$(Get-Date -Format 'yyyyMMdd-HHmmss')"
 Write-Host "Deploying Bicep with deployment name: $deploymentName"
+# Phase 1: Deploy ACI (identity created)
 New-AzResourceGroupDeployment `
-    -Name $deploymentName `
+    -Name "$deploymentName-aci" `
     -ResourceGroupName $resourceGroupName `
     -TemplateFile $bicepFile `
     -TemplateParameterFile $parameterFile `
     -postgresPassword (ConvertTo-SecureString $postgresPasswordPlain -AsPlainText -Force) `
+    -deployPhase "aciOnly" `
     -Verbose
-$deployment = Get-AzResourceGroupDeployment -ResourceGroupName $resourceGroupName -Name $deploymentName
+
+# Phase 2: Deploy RBAC (assign AcrPull to ACI identity)
+New-AzResourceGroupDeployment `
+    -Name "$deploymentName-rbac" `
+    -ResourceGroupName $resourceGroupName `
+    -TemplateFile $bicepFile `
+    -TemplateParameterFile $parameterFile `
+    -postgresPassword (ConvertTo-SecureString $postgresPasswordPlain -AsPlainText -Force) `
+    -deployPhase "rbacOnly" `
+    -Verbose
+$rbacDeployment = Get-AzResourceGroupDeployment -ResourceGroupName $resourceGroupName -Name "$deploymentName-rbac"
+
+$acrResourceIdForAci   = [string]$rbacDeployment.Outputs['acrResourceIdForAci'].Value
+$acrAssignedPrincipalAci = [string]$rbacDeployment.Outputs['acrAssignedPrincipalAci'].Value
+
+Write-Host "RBAC assignment applied: AcrPull on $acrResourceIdForAci for principal $acrAssignedPrincipalAci"
+
+# Phase 3: Redeploy ACI (now can pull image)
+New-AzResourceGroupDeployment `
+    -Name "$deploymentName-aci-redeploy" `
+    -ResourceGroupName $resourceGroupName `
+    -TemplateFile $bicepFile `
+    -TemplateParameterFile $parameterFile `
+    -postgresPassword (ConvertTo-SecureString $postgresPasswordPlain -AsPlainText -Force) `
+    -deployPhase "aciOnly" `
+    -Verbose
+
+# Get outputs from the final ACI redeploy
+$deployment = Get-AzResourceGroupDeployment -ResourceGroupName $resourceGroupName -Name "$deploymentName-aci-redeploy"
+
 # ================================
 # 9. GET DEPLOYMENT OUTPUTS
 # ================================
@@ -151,48 +182,6 @@ Set-AzKeyVaultSecret `
     -SecretValue (ConvertTo-SecureString $connString -AsPlainText -Force)
 Write-Host "Updated Key Vault secret 'db-connection-string' (FQDN: $dbFqdn)"
 
-# ================================
-# 12. GRANT APP SERVICE IDENTITY RBAC ACCESS TO KEY VAULT (2025 best practice)
-# ================================
-Write-Host "Granting App Service RBAC access to Key Vault (Secrets User)..." -ForegroundColor Yellow
-
-$appNameFromDeploy = $deployment.Outputs.appServiceName.Value
-$webApp = Get-AzWebApp -ResourceGroupName $resourceGroupName -Name $appNameFromDeploy -ErrorAction Stop
-$principalId = $webApp.Identity.PrincipalId
-
-if (-not $principalId) {
-    Write-Warning "Managed identity not ready yet — retry in 30s or re-run workflow"
-} else {
-    $kvScope = "/subscriptions/$SubscriptionId/resourceGroups/$($config.VaultResourceGroup)/providers/Microsoft.KeyVault/vaults/$($config.VaultName)"
-    
-    # Check if already assigned
-    $assignment = Get-AzRoleAssignment -ObjectId $principalId -RoleDefinitionName "Key Vault Secrets User" -Scope $kvScope -ErrorAction SilentlyContinue
-    if ($assignment) {
-        Write-Host "RBAC already assigned (idempotent)" -ForegroundColor Cyan
-    } else {
-        # Retry logic for propagation (up to 3 tries, 30s apart)
-        $retryCount = 0
-        $maxRetries = 3
-        $success = $false
-        while ($retryCount -lt $maxRetries -and -not $success) {
-            try {
-                New-AzRoleAssignment -ObjectId $principalId `
-                                     -RoleDefinitionName "Key Vault Secrets User" `
-                                     -Scope $kvScope | Out-Null
-                Write-Host "Successfully granted 'Key Vault Secrets User' RBAC to $appNameFromDeploy" -ForegroundColor Green
-                $success = $true
-            } catch {
-                $retryCount++
-                if ($retryCount -lt $maxRetries) {
-                    Write-Host "RBAC grant attempt $retryCount failed (likely propagation): $($_.Exception.Message). Retrying in 30s..." -ForegroundColor Yellow
-                    Start-Sleep -Seconds 30
-                } else {
-                    Write-Error "RBAC grant failed after $maxRetries attempts: $($_.Exception.Message). Check OIDC perms on KV RG and re-run."
-                }
-            }
-        }
-    }
-}
 
 # ================================
 # 13. ENSURE APP SERVICE IS RUNNING (renumbered from 13)

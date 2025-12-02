@@ -1,3 +1,6 @@
+@allowed(['aciOnly', 'rbacOnly', 'full'])
+param deployPhase string = 'full'
+
 targetScope = 'resourceGroup'
 
 @allowed(['dev', 'prod'])
@@ -27,7 +30,7 @@ module web 'modules/appService.bicep' = {
   }
 }
 
-module aci 'modules/aci.bicep' = {
+module aci 'modules/aci.bicep' = if (deployPhase == 'aciOnly' || deployPhase == 'full') {
   name: 'aci-deploy'
   params: {
     location: location
@@ -76,7 +79,7 @@ module acrRbacWeb 'modules/rbac-acr.bicep' = {
 }
 
 // RBAC: AcrPull for ACI
-module acrRbacAci 'modules/rbac-acr.bicep' = {
+module acrRbacAci 'modules/rbac-acr.bicep' = if (deployPhase == 'rbacOnly' || deployPhase == 'full') {
   name: 'rbac-acr-aci'
   scope: resourceGroup(app.acrResourceGroup)
   params: {
@@ -84,7 +87,10 @@ module acrRbacAci 'modules/rbac-acr.bicep' = {
     principalId: aci.outputs.containerGroupPrincipalId
   }
 }
-
+output acrResourceIdForWeb string = acrRbacWeb.outputs.acrResourceId
+output acrResourceIdForAci string = acrRbacAci.outputs.acrResourceId
+output acrAssignedPrincipalWeb string = acrRbacWeb.outputs.assignedPrincipalId
+output acrAssignedPrincipalAci string = acrRbacAci.outputs.assignedPrincipalId
 output dbFqdn string = aci.outputs.dbFqdn
 output storageAccountName string = storage.outputs.storageAccountName
 output storageAccountKey string = storage.outputs.storageAccountKey

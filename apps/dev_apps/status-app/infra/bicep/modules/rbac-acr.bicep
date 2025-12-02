@@ -20,3 +20,6 @@ resource acrAccess 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
     principalId: principalId
   }
 }
+
+output acrResourceId string = acr.id
+output assignedPrincipalId string = principalId
