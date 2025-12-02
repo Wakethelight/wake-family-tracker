@@ -135,11 +135,11 @@ $deployment = Get-AzResourceGroupDeployment -ResourceGroupName $resourceGroupNam
 # ================================
 # 9. GET DEPLOYMENT OUTPUTS
 # ================================
-$dbFqdn = [string]$deployment.Outputs['dbFqdn'].Value
+$dbFQDN = [string]$deployment.Outputs['dbFqdn'].Value
+Write-Host "Database FQDN: $dbFQDN"
 $storageName = [string]$deployment.Outputs['storageAccountName'].Value
 $storageKey = [string]$deployment.Outputs['storageAccountKey'].Value
 $appServiceName = [string]$deployment.Outputs['appServiceName'].Value
-Write-Host "DB FQDN: $dbFqdn"
 Write-Host "Storage Account: $storageName"
 # ================================
 # 10. UPLOAD init.sql

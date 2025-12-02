@@ -1,6 +1,3 @@
-@allowed(['aciOnly', 'rbacOnly', 'full'])
-param deployPhase string = 'full'
-
 targetScope = 'resourceGroup'
 
 @allowed(['dev', 'prod'])
@@ -34,7 +31,7 @@ module web 'modules/appService.bicep' = {
   }
 }
 
-module aci 'modules/aci.bicep' = if (deployPhase == 'aciOnly' || deployPhase == 'full') {
+module aci 'modules/aci.bicep'= {
   name: 'aci-deploy'
   params: {
     location: location
@@ -86,7 +83,7 @@ module acrRbacWeb 'modules/rbac-acr.bicep' = {
 }
 
 // RBAC: AcrPull for ACI
-module acrRbacAci 'modules/rbac-acr.bicep' = if (deployPhase == 'rbacOnly' || deployPhase == 'full') {
+module acrRbacAci 'modules/rbac-acr.bicep' = {
   name: 'rbac-acr-aci'
   scope: resourceGroup(acr.resourceGroup)
   params: {
@@ -95,7 +92,7 @@ module acrRbacAci 'modules/rbac-acr.bicep' = if (deployPhase == 'rbacOnly' || de
   }
 }
 
-output dbFqdn string = (deployPhase == 'aciOnly' || deployPhase == 'full') ? aci.outputs.dbFqdn : ''
+output dbFqdn string = aci.outputs.dbFqdn
 output storageAccountName string = storage.outputs.storageAccountName
 output storageAccountKey string = storage.outputs.storageAccountKey
 output appServiceName string = web.outputs.appServiceName
@@ -105,7 +102,3 @@ output postgresDbName string = postgres.postgresDbName
 // Always safe: Web RBAC is unconditional
 output acrResourceIdForWeb string = acrRbacWeb.outputs.acrResourceId
 output acrAssignedPrincipalWeb string = acrRbacWeb.outputs.assignedPrincipalId
-
-// Guarded: only emit if RBAC module was deployed
-output acrResourceIdForAci string = (deployPhase == 'rbacOnly' || deployPhase == 'full') ? acrRbacAci.outputs.acrResourceId : ''
-output acrAssignedPrincipalAci string = (deployPhase == 'rbacOnly' || deployPhase == 'full') ? acrRbacAci.outputs.assignedPrincipalId : ''
