@@ -21,7 +21,7 @@
         "serverName": "wakeprodpg01",
         "dbName": "statusdb",
         "adminUser": "pgadmin",
-        "version": "16",
+        "version": "18",
         "tier": "Burstable",
         "skuName": "Standard_B1ms",
         "tenantId": "72f988bf-86f1-41af-91ab-2d7cd011db47",

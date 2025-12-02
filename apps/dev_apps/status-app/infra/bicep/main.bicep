@@ -87,13 +87,17 @@ module acrRbacAci 'modules/rbac-acr.bicep' = if (deployPhase == 'rbacOnly' || de
     principalId: aci.outputs.containerGroupPrincipalId
   }
 }
-output acrResourceIdForWeb string = acrRbacWeb.outputs.acrResourceId
-output acrResourceIdForAci string = acrRbacAci.outputs.acrResourceId
-output acrAssignedPrincipalWeb string = acrRbacWeb.outputs.assignedPrincipalId
-output acrAssignedPrincipalAci string = acrRbacAci.outputs.assignedPrincipalId
 output dbFqdn string = aci.outputs.dbFqdn
 output storageAccountName string = storage.outputs.storageAccountName
 output storageAccountKey string = storage.outputs.storageAccountKey
 output appServiceName string = web.outputs.appServiceName
 output postgresUser string = postgres.postgresUser
 output postgresDbName string = postgres.postgresDbName
+
+// Always safe: Web RBAC is unconditional
+output acrResourceIdForWeb string = acrRbacWeb.outputs.acrResourceId
+output acrAssignedPrincipalWeb string = acrRbacWeb.outputs.assignedPrincipalId
+
+// Guarded: only emit if RBAC module was deployed
+output acrResourceIdForAci string = (deployPhase == 'rbacOnly' || deployPhase == 'full') ? acrRbacAci.outputs.acrResourceId : ''
+output acrAssignedPrincipalAci string = (deployPhase == 'rbacOnly' || deployPhase == 'full') ? acrRbacAci.outputs.assignedPrincipalId : ''
