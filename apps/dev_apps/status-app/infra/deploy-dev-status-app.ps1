@@ -132,8 +132,6 @@ $deployment = Get-AzResourceGroupDeployment -ResourceGroupName $resourceGroupNam
 # 9. GET DEPLOYMENT OUTPUTS
 # ================================
 $dbFqdn = [string]$deployment.Outputs['dbFqdn'].Value
-$postgresUser = [string]$deployment.Outputs['postgresUser'].Value
-$postgresDbName = [string]$deployment.Outputs['postgresDbName'].Value
 $storageName = [string]$deployment.Outputs['storageAccountName'].Value
 $storageKey = [string]$deployment.Outputs['storageAccountKey'].Value
 $appServiceName = [string]$deployment.Outputs['appServiceName'].Value
@@ -151,17 +149,6 @@ Set-AzStorageFileContent `
     -Source $initSqlSource `
     -Force
 Write-Host "Uploaded init.sql"
-# ================================
-# 11. WRITE CONNECTION STRING TO KV
-# ================================
-
-$connString = "postgresql://${postgresUser}:${postgresPasswordPlain}@${dbFqdn}:5432/${postgresDbName}?sslmode=disable"
-Set-AzKeyVaultSecret `
-    -VaultName $config.VaultName `
-    -Name "db-connection-string" `
-    -SecretValue (ConvertTo-SecureString $connString -AsPlainText -Force)
-Write-Host "Updated Key Vault secret 'db-connection-string' (FQDN: $dbFqdn)"
-
 
 # ================================
 # 13. ENSURE APP SERVICE IS RUNNING (renumbered from 13)

@@ -93,17 +93,3 @@ jobs:
             -e DB_CONNECTION_STRING="${{ env.DB_CONNECTION_STRING }}" \
             ${{ vars.ACR_NAME_DEV }}.azurecr.io/status-app:${{ env.IMAGE_TAG }} \
             python /app/init_db.py
-
-      - name: Update App Service Container
-        env:
-          APP_SERVICE_NAME: ${{ steps.deploy.outputs.APP_SERVICE_NAME }}
-          RESOURCE_GROUP_NAME: ${{ steps.deploy.outputs.resourceGroupName }}
-        run: |
-          az webapp config container set \
-            --name $APP_SERVICE_NAME \
-            --resource-group $RESOURCE_GROUP_NAME \
-            --docker-custom-image-name ${{ vars.ACR_NAME_DEV }}.azurecr.io/status-app:${{ env.IMAGE_TAG }} \
-            --container-image-name ${{ vars.ACR_NAME_DEV }}.azurecr.io/status-app:${{ env.IMAGE_TAG }} \
-            --container-registry-url https://${{ vars.ACR_NAME_DEV }}.azurecr.io \
-            --container-registry-user ${{ secrets.ACR_USERNAME }} \
-            --container-registry-password ${{ secrets.ACR_PASSWORD }}

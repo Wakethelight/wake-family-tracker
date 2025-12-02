@@ -47,9 +47,9 @@ module aci 'modules/aci.bicep' = if (deployPhase == 'aciOnly' || deployPhase == 
     postgresMemoryGb: postgres.postgresMemoryGb
     postgresDbName: postgres.postgresDbName
     postgresUser: postgres.postgresUser
-    acrAdminUsername: app.acrAdminUsername
+    acrAdminUsername: postgres.acrAdminUsername
     acrAdminPassword: acrAdminPassword
-    acrName: app.acrName
+    acrName: postgres.acrName
   }
 }
 
@@ -59,7 +59,7 @@ module dbSecret 'modules/keyvault-secrets.bicep' = {
   params: {
     vaultName: app.vaultName
     secretName: 'db-connection-string'
-    secretValue: 'postgresql://${postgres.postgresUser}:${postgresPassword}@${aci.outputs.dbFqdn}:5432/${postgres.postgresDbName}?sslmode=enabled'
+    secretValue: 'postgresql://${postgres.postgresUser}:${postgresPassword}@${aci.outputs.dbFqdn}:5432/${postgres.postgresDbName}?sslmode=disabled'
   }
 }
 

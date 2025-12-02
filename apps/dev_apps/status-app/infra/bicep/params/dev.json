@@ -10,10 +10,9 @@
         "planSku": "B1",
         "vaultName": "kv-wake-dev",
         "vaultResourceGroup": "rg-dev-kv-wake-dev",
-        "acrName": "acrwakedev01",
         "acrLoginServer": "acrwakedev01.azurecr.io",
-        "acrResourceGroup": "rg-dev-acrwakedev01",
-        "acrAdminUsername": "acrwakedev01"
+        "acrResourceGroup": "rg-dev-acrwakedev01"
+
       }
     },
     "postgres": {
@@ -27,7 +26,9 @@
         "postgresCpu": 1,
         "postgresMemoryGb": 2,
         "aciContainerGroupName": "statusdb-aci",
-        "osType": "Linux"
+        "osType": "Linux",
+        "acrAdminUsername": "acrwakedev01",
+        "acrName": "acrwakedev01"
       }
     }
 
