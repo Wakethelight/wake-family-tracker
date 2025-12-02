@@ -131,31 +131,38 @@ try{
 # Get outputs from the deployment
 $deployment = Get-AzResourceGroupDeployment -ResourceGroupName $resourceGroupName -Name $deploymentName
 
+# Get outputs from the deployment
+$deployment = Get-AzResourceGroupDeployment -ResourceGroupName $resourceGroupName -Name $deploymentName
+
+# Helper function to safely extract outputs
+function Get-DeploymentOutputValue {
+    param(
+        [Parameter(Mandatory=$true)]
+        [object]$Deployment,
+        [Parameter(Mandatory=$true)]
+        [string]$Key
+    )
+    if ($Deployment.Outputs.ContainsKey($Key) -and $Deployment.Outputs[$Key]) {
+        return [string]$Deployment.Outputs[$Key].Value
+    } else {
+        Write-Warning "Deployment output '$Key' not found or empty"
+        return ""
+    }
+}
 
 # ================================
 # 9. GET DEPLOYMENT OUTPUTS
 # ================================
-if ($deployment.Outputs.ContainsKey('dbFqdn') -and $deployment.Outputs['dbFqdn']) {
-    $dbFqdn = [string]$deployment.Outputs['dbFqdn'].Value
-} else {
-    Write-Warning "dbFqdn output missing"
-}
-if ($deployment.Outputs.ContainsKey('storageAccountName')) {
-    $storageName = [string]$deployment.Outputs['storageAccountName'].Value
-    Write-Host "Storage Account: $storageName"
-} else {
-    Write-Warning "storageAccountName output not found"
-}
-if ($deployment.Outputs.ContainsKey('storageAccountKey')) {
-    $storageKey = [string]$deployment.Outputs['storageAccountKey'].Value
-} else {
-    Write-Warning "storageAccountKey output not found"
-}
-if ($deployment.Outputs.ContainsKey('appServiceName')) {
-    $appServiceName = [string]$deployment.Outputs['appServiceName'].Value
-} else {
-    Write-Warning "appServiceName output not found"
-}
+$dbFqdn         = Get-DeploymentOutputValue -Deployment $deployment -Key "dbFqdn"
+$storageName    = Get-DeploymentOutputValue -Deployment $deployment -Key "storageAccountName"
+$storageKey     = Get-DeploymentOutputValue -Deployment $deployment -Key "storageAccountKey"
+$appServiceName = Get-DeploymentOutputValue -Deployment $deployment -Key "appServiceName"
+$appServiceOutput = Get-DeploymentOutputValue -Deployment $deployment -Key "appServiceName"
+
+Write-Host "DB FQDN: $dbFqdn"
+Write-Host "Storage Account: $storageName"
+Write-Host "App Service: $appServiceName"
+
 # ================================
 # 10. UPLOAD init.sql
 # ================================
@@ -191,8 +198,6 @@ else {
 # ================================
 Write-Host "DEPLOYMENT COMPLETED SUCCESSFULLY!" -ForegroundColor Green
 Write-Host "App URL: https://$appServiceName.azurewebsites.net" -ForegroundColor Cyan
-# Outputs unchanged
-$appServiceOutput = $deployment.Outputs.appServiceName.Value
 Write-Host "Emitting GitHub outputs..."
 "APP_SERVICE_NAME=$appServiceOutput" | Out-File -FilePath $env:GITHUB_OUTPUT -Append
 "resourceGroupName=$resourceGroupName" | Out-File -FilePath $env:GITHUB_OUTPUT -Append
