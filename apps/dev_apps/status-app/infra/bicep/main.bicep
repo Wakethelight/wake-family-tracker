@@ -10,6 +10,8 @@ param app object
 param postgres object
 @secure()
 param postgresPassword string
+@secure()
+param acrAdminPassword string
 
 module storage 'modules/storage.bicep' = {
   name: 'storage-deploy'
@@ -45,6 +47,9 @@ module aci 'modules/aci.bicep' = if (deployPhase == 'aciOnly' || deployPhase == 
     postgresMemoryGb: postgres.postgresMemoryGb
     postgresDbName: postgres.postgresDbName
     postgresUser: postgres.postgresUser
+    acrAdminUsername: app.acrAdminUsername
+    acrAdminPassword: acrAdminPassword
+    acrName: app.acrName
   }
 }
 

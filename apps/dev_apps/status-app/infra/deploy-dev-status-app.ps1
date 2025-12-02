@@ -58,6 +58,8 @@ $config = $envConfig[$Environment]
 $TenantId = $env:AZURE_TENANT_ID
 $SubscriptionId = $env:AZURE_SUBSCRIPTION_ID
 $PostgresPassword = $env:POSTGRES_PASSWORD
+$acrPassword = $env:ACR_PASSWORD
+
 if (-not $TenantId -or -not $SubscriptionId) {
     Write-Error "AZURE_TENANT_ID and AZURE_SUBSCRIPTION_ID must be set in GitHub Secrets/Variables"
     exit 1
@@ -105,78 +107,26 @@ if ($env:GITHUB_ACTIONS) {
 # ================================
 # 8. DEPLOY BICEP (three phases)
 # ================================
+# ================================
+# 8. DEPLOY BICEP (single phase with admin creds)
+# ================================
 $bicepFile = Join-Path $PSScriptRoot "bicep/main.bicep"
 $parameterFile = Join-Path $PSScriptRoot "bicep/params/$Environment.json"
 $deploymentName = "statusapp-deploy-$(Get-Date -Format 'yyyyMMdd-HHmmss')"
 Write-Host "Deploying Bicep with deployment name: $deploymentName"
 
-# Phase 1: Deploy ACI (identity created, container may fail to start)
-try {
-    New-AzResourceGroupDeployment `
-        -Name "$deploymentName-aci" `
-        -ResourceGroupName $resourceGroupName `
-        -TemplateFile $bicepFile `
-        -TemplateParameterFile $parameterFile `
-        -postgresPassword (ConvertTo-SecureString $postgresPasswordPlain -AsPlainText -Force) `
-        -deployPhase "aciOnly" `
-        -Verbose -ErrorAction Stop
-} catch {
-    Write-Warning "ACI phase failed to start container (expected). Identity still created. Continuing to RBAC phase..."
-}
+New-AzResourceGroupDeployment `
+    -Name $deploymentName `
+    -ResourceGroupName $resourceGroupName `
+    -TemplateFile $bicepFile `
+    -TemplateParameterFile $parameterFile `
+    -postgresPassword (ConvertTo-SecureString $postgresPasswordPlain -AsPlainText -Force) `
+    -acrAdminPassword (ConvertTo-SecureString $acrPassword -AsPlainText -Force) `
+    -Verbose -ErrorAction Stop
 
-# Phase 2: Deploy RBAC (assign AcrPull to ACI identity)
-try {
-    New-AzResourceGroupDeployment `
-        -Name "$deploymentName-rbac" `
-        -ResourceGroupName $resourceGroupName `
-        -TemplateFile $bicepFile `
-        -TemplateParameterFile $parameterFile `
-        -postgresPassword (ConvertTo-SecureString $postgresPasswordPlain -AsPlainText -Force) `
-        -deployPhase "rbacOnly" `
-        -Verbose -ErrorAction Stop
+# Get outputs from the deployment
+$deployment = Get-AzResourceGroupDeployment -ResourceGroupName $resourceGroupName -Name $deploymentName
 
-    $rbacDeployment = Get-AzResourceGroupDeployment -ResourceGroupName $resourceGroupName -Name "$deploymentName-rbac"
-    $acrResourceIdForAci    = [string]$rbacDeployment.Outputs['acrResourceIdForAci'].Value
-    $acrAssignedPrincipalAci= [string]$rbacDeployment.Outputs['acrAssignedPrincipalAci'].Value
-    Write-Host "RBAC assignment applied: AcrPull on $acrResourceIdForAci for principal $acrAssignedPrincipalAci"
-} catch {
-    Write-Warning "RBAC phase reported errors (likely due to ACI being in Failed state). Role assignment is idempotent and should still exist. Continuing to final redeploy..."
-}
-
-# Phase 3: Redeploy ACI (now can pull image) with retry loop
-$maxRetries = 3
-$retryCount = 0
-$success = $false
-
-while (-not $success -and $retryCount -lt $maxRetries) {
-    try {
-        $attemptName = "$deploymentName-aci-redeploy-$retryCount"
-        New-AzResourceGroupDeployment `
-            -Name $attemptName `
-            -ResourceGroupName $resourceGroupName `
-            -TemplateFile $bicepFile `
-            -TemplateParameterFile $parameterFile `
-            -postgresPassword (ConvertTo-SecureString $postgresPasswordPlain -AsPlainText -Force) `
-            -deployPhase "aciOnly" `
-            -Verbose -ErrorAction Stop
-
-        $success = $true
-        Write-Host "ACI redeploy succeeded on attempt $($retryCount+1)" -ForegroundColor Green
-        $deployment = Get-AzResourceGroupDeployment -ResourceGroupName $resourceGroupName -Name $attemptName
-    } catch {
-        $retryCount++
-        if ($retryCount -lt $maxRetries) {
-            Write-Warning "ACI redeploy attempt $retryCount failed (likely RBAC propagation). Retrying in 30s..."
-            Start-Sleep -Seconds 30
-        } else {
-            Write-Error "ACI redeploy failed after $maxRetries attempts. Check ACR permissions and image availability."
-            exit 1
-        }
-    }
-}
-
-# Get outputs from the final ACI redeploy
-$deployment = Get-AzResourceGroupDeployment -ResourceGroupName $resourceGroupName -Name "$deploymentName-aci-redeploy"
 
 # ================================
 # 9. GET DEPLOYMENT OUTPUTS
@@ -241,3 +191,76 @@ Write-Host "Emitting GitHub outputs..."
 "APP_SERVICE_NAME=$appServiceOutput" | Out-File -FilePath $env:GITHUB_OUTPUT -Append
 "resourceGroupName=$resourceGroupName" | Out-File -FilePath $env:GITHUB_OUTPUT -Append
 "VAULT_NAME=$($config.VaultName)" | Out-File -FilePath $env:GITHUB_OUTPUT -Append
+
+
+
+
+
+<#
+old deployment code for three-phase ACI with RBAC (now removed)
+# Phase 1: Deploy ACI (identity created, container may fail to start)
+try {
+    New-AzResourceGroupDeployment `
+        -Name "$deploymentName-aci" `
+        -ResourceGroupName $resourceGroupName `
+        -TemplateFile $bicepFile `
+        -TemplateParameterFile $parameterFile `
+        -postgresPassword (ConvertTo-SecureString $postgresPasswordPlain -AsPlainText -Force) `
+        -deployPhase "aciOnly" `
+        -acrAdminPassword (ConvertTo-SecureString $acrPassword -AsPlainText -Force)
+        -Verbose -ErrorAction Stop
+} catch {
+    Write-Warning "ACI phase failed to start container (expected). Identity still created. Continuing to RBAC phase..."
+}
+
+# Phase 2: Deploy RBAC (assign AcrPull to ACI identity)
+try {
+    New-AzResourceGroupDeployment `
+        -Name "$deploymentName-rbac" `
+        -ResourceGroupName $resourceGroupName `
+        -TemplateFile $bicepFile `
+        -TemplateParameterFile $parameterFile `
+        -postgresPassword (ConvertTo-SecureString $postgresPasswordPlain -AsPlainText -Force) `
+        -deployPhase "rbacOnly" `
+        -Verbose -ErrorAction Stop
+
+    $rbacDeployment = Get-AzResourceGroupDeployment -ResourceGroupName $resourceGroupName -Name "$deploymentName-rbac"
+    $acrResourceIdForAci    = [string]$rbacDeployment.Outputs['acrResourceIdForAci'].Value
+    $acrAssignedPrincipalAci= [string]$rbacDeployment.Outputs['acrAssignedPrincipalAci'].Value
+    Write-Host "RBAC assignment applied: AcrPull on $acrResourceIdForAci for principal $acrAssignedPrincipalAci"
+} catch {
+    Write-Warning "RBAC phase reported errors (likely due to ACI being in Failed state). Role assignment is idempotent and should still exist. Continuing to final redeploy..."
+}
+
+# Phase 3: Redeploy ACI (now can pull image) with retry loop
+$maxRetries = 3
+$retryCount = 0
+$success = $false
+
+while (-not $success -and $retryCount -lt $maxRetries) {
+    try {
+        $attemptName = "$deploymentName-aci-redeploy-$retryCount"
+        New-AzResourceGroupDeployment `
+            -Name $attemptName `
+            -ResourceGroupName $resourceGroupName `
+            -TemplateFile $bicepFile `
+            -TemplateParameterFile $parameterFile `
+            -postgresPassword (ConvertTo-SecureString $postgresPasswordPlain -AsPlainText -Force) `
+            -deployPhase "aciOnly" `
+            -Verbose -ErrorAction Stop
+
+        $success = $true
+        Write-Host "ACI redeploy succeeded on attempt $($retryCount+1)" -ForegroundColor Green
+        $deployment = Get-AzResourceGroupDeployment -ResourceGroupName $resourceGroupName -Name $attemptName
+    } catch {
+        $retryCount++
+        if ($retryCount -lt $maxRetries) {
+            Write-Warning "ACI redeploy attempt $retryCount failed (likely RBAC propagation). Retrying in 30s..."
+            Start-Sleep -Seconds 30
+        } else {
+            Write-Error "ACI redeploy failed after $maxRetries attempts. Check ACR permissions and image availability."
+            exit 1
+        }
+    }
+}
+#>

@@ -73,6 +73,7 @@ jobs:
           POSTGRES_PASSWORD: ${{ secrets.POSTGRES_PASSWORD }}
           AZURE_TENANT_ID: ${{ vars.AZURE_TENANT_ID }}
           AZURE_SUBSCRIPTION_ID: ${{ vars.AZURE_SUBSCRIPTION_ID }}
+          ACR_PASSWORD: ${{ secrets.ACR_DEV_PASSWORD }}
 
       - name: Fetch DB Connection String from Key Vault
         run: |

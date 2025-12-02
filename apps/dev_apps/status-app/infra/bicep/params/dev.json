@@ -12,7 +12,8 @@
         "vaultResourceGroup": "rg-dev-kv-wake-dev",
         "acrName": "acrwakedev01",
         "acrLoginServer": "acrwakedev01.azurecr.io",
-        "acrResourceGroup": "rg-dev-acrwakedev01"
+        "acrResourceGroup": "rg-dev-acrwakedev01",
+        "acrAdminUsername": "acrwakedev01"
       }
     },
     "postgres": {
