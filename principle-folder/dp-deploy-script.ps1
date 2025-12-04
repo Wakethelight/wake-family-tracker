@@ -82,8 +82,10 @@ do {
     $action = Read-Host "Enter a role to assign, or type 'remove <RoleName>' to remove (leave blank to finish)"
 
     if (![string]::IsNullOrWhiteSpace($action)) {
+        # Handle removal
         if ($action -like "remove *") {
             $roleToRemove = $action.Substring(7).Trim()
+            # Confirm removal
             $confirm = Read-Host "Are you sure you want to remove role '$roleToRemove' from $SpName? (y/n)"
             if ($confirm -eq "y") {
                 try {
@@ -109,12 +111,14 @@ do {
         else {
             $role = $action
             try {
+                # Assign role
                 if (-not (Get-AzRoleAssignment -ObjectId $sp.Id -RoleDefinitionName $role -Scope "/subscriptions/$subscriptionId")) {
                     New-AzRoleAssignment -ApplicationId $sp.AppId -RoleDefinitionName $role -Scope "/subscriptions/$subscriptionId"
                     Write-Host "Assigned role $role to $SpName"
                     $addedRoles += $role
                     $actionLog += "$(Get-Date -Format 'u') - Assigned role $role"
                 } else {
+                    # Already assigned
                     Write-Host "Role $role already assigned to $SpName"
                     $actionLog += "$(Get-Date -Format 'u') - Attempted assignment of $role (already assigned)"
                 }
