@@ -1,7 +1,12 @@
 # ================================
 # Interactive Service Principal Creator (Azure-generated secret)
 # ================================
+# if you want to only update roles on an existing SP, run with -UpdateOnly
+param(
+    [switch]$UpdateOnly
+)
 
+# Variables for Azure connection
 $subscriptionId = "bb8f3354-1ce0-4efc-b2a7-8506304c5362"
 $tenantId       = "a5dea08c-0cc9-40d8-acaa-cacf723e7b9b"
 
