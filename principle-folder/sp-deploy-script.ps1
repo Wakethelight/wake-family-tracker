@@ -6,6 +6,14 @@ param(
     [switch]$UpdateOnly
 )
 
+# Variables to track secret rotation
+$lastReset = $null
+$daysSince = $null
+$choice = $null
+
+# Track actions across rotation + role loop
+$actionLog = @()
+
 # Variables for Azure connection
 $subscriptionId = "bb8f3354-1ce0-4efc-b2a7-8506304c5362"
 $tenantId       = "a5dea08c-0cc9-40d8-acaa-cacf723e7b9b"
@@ -36,10 +44,6 @@ $config = $envConfig[$Environment]
 $SpNameprefix = Read-Host "Enter Service Principal name prefix (e.g. sp-aci)"
 $SpName = "$SpNameprefix-$Environment"
 
-param(
-    [switch]$UpdateOnly
-)
-
 # Connect
 Connect-AzAccount -Subscription $subscriptionId -Tenant $tenantId
 
@@ -65,6 +69,59 @@ if ($null -eq $existingSp) {
 } else {
     Write-Host "Service Principal $SpName already exists."
     $sp = $existingSp
+
+    # ================================
+    # Optional Secret Rotation Prompt
+    # ================================
+    if ($UpdateOnly -and $existingSp) {
+        # Get current secret metadata from Key Vault
+        $secret = Get-AzKeyVaultSecret -VaultName $config.VaultName -Name "$($SpName)-client-secret" -ErrorAction SilentlyContinue
+        $lastReset = $secret.Attributes.Updated
+        $rotationDays = 90
+        $daysSince = $null
+
+        if ($lastReset) {
+            $daysSince = (New-TimeSpan -Start $lastReset -End (Get-Date)).Days
+        }
+
+        $promptMsg = "Do you want to force reset the secret"
+        if ($lastReset) {
+            $promptMsg += " (last reset: $lastReset, $daysSince days ago)"
+            if ($daysSince -ge $rotationDays) {
+                Write-Host "⚠ Secret is $daysSince days old — rotation recommended" -ForegroundColor Yellow
+            }
+
+        }
+        $promptMsg += "? (Y/N, default=N): "
+
+        $choice = (Read-Host $promptMsg).ToUpper()
+
+
+        if ($choice -eq "Y") {
+            Write-Host "Force reset requested. Resetting secret..."
+            $reset = az ad sp credential reset --id $sp.AppId | ConvertFrom-Json
+            $clientSecret = $reset.password
+
+            # 👉 Push new secret to Key Vault
+            $clientSecretSecure = ConvertTo-SecureString $clientSecret -AsPlainText -Force
+            $clientSecret = Set-AzKeyVaultSecret -VaultName $config.VaultName -Name "$($SpName)-client-secret" -SecretValue $clientSecretSecure
+
+            Write-Host "Updated Key Vault '$($config.VaultName)' secret '$($SpName)-client-secret'."
+
+            $actionLog += "$(Get-Date -Format 'u') - Rotated client secret"
+
+            # -------------------------------
+            # OPTIONAL: Set secret expiry
+            # Uncomment the following line if you want Key Vault to enforce rotation reminders
+            # $clientSecret = Set-AzKeyVaultSecret -VaultName $config.VaultName -Name "$($SpName)-client-secret" -SecretValue $clientSecretSecure -Expires (Get-Date).AddDays($rotationDays)
+            # -------------------------------
+        } else {
+            Write-Host "Keeping existing secret."
+            $actionLog += "$(Get-Date -Format 'u') - Skipped secret rotation"
+        }
+    }
+
+
 }
 
 # Show existing role assignments
@@ -81,7 +138,7 @@ Write-Host "======================================"
 # Track changes
 $addedRoles = @()
 $removedRoles = @()
-$actionLog = @()
+
 
 do {
     $action = Read-Host "Enter a role to assign, or type 'remove <RoleName>' to remove (leave blank to finish)"
@@ -148,7 +205,6 @@ do {
 # ================================
 # Summary Report
 # ================================
-
 $summaryLines = @()
 $summaryLines += "===== SUMMARY ====="
 $summaryLines += "Service Principal: $SpName"
@@ -158,6 +214,24 @@ $summaryLines += "Key Vault: $($config.VaultName)"
 $summaryLines += "Existing Roles (final state): $($roles.RoleDefinitionName -join ', ')"
 $summaryLines += "New Roles Assigned: $($addedRoles -join ', ')"
 $summaryLines += "Roles Removed: $($removedRoles -join ', ')"
+$summaryLines += "Secret Rotation:"
+if ($lastReset) {
+    $summaryLines += " - Last reset (from KV metadata): $lastReset"
+    if ($daysSince -ge 90) {
+        $summaryLines += " - ⚠ Secret is $daysSince days old — rotation recommended"
+        Write-Host "⚠ Secret is $daysSince days old — rotation recommended" -ForegroundColor Yellow
+    }
+}
+if ($choice -eq "Y") {
+    $summaryLines += " - Secret rotated during this run at $(Get-Date -Format 'u')"
+    Write-Host "Secret rotated during this run" -ForegroundColor Green
+} elseif ($choice -eq "N") {
+    $summaryLines += " - Secret not rotated this run"
+    Write-Host "Secret not rotated this run" -ForegroundColor Cyan
+} else {
+    $summaryLines += " - No rotation prompt executed"
+}
+
 
 if (-not $UpdateOnly) {
     $summaryLines += "Secrets stored at:"
@@ -169,13 +243,3 @@ if (-not $UpdateOnly) {
 $summaryLines += "Action Log:"
 $summaryLines += $actionLog
 $summaryLines += "===================="
-
-# Write to console
-$summaryLines | ForEach-Object { Write-Host $_ }
-
-# Export to file
-$timestamp = Get-Date -Format "yyyyMMdd-HHmmss"
-$summaryFile = ".\${SpName}-summary-$timestamp.txt"
-$summaryLines | Out-File -FilePath $summaryFile -Encoding UTF8
-
-Write-Host "Summary exported to $summaryFile"
