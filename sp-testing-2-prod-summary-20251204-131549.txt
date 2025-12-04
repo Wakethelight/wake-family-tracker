@@ -1,0 +1,19 @@
+===== SUMMARY =====
+Service Principal: sp-testing-2-prod
+AppId: 76c71026-003d-43c4-8668-3b23522680e1
+TenantId: a5dea08c-0cc9-40d8-acaa-cacf723e7b9b
+Key Vault: kv-wake-prod
+Existing Roles (final state): AcrPull, Key Vault Secrets User, Reader
+New Roles Assigned: AcrPull, Key Vault Secrets User, Reader
+Roles Removed: 
+Secret Rotation:
+ - No rotation prompt executed
+Secrets stored at:
+ - ClientId: https://kv-wake-prod.vault.azure.net:443/secrets/sp-testing-2-prod-client-id/e8dfe7f28cff48fe82633ca13f298879
+ - TenantId: https://kv-wake-prod.vault.azure.net:443/secrets/sp-testing-2-prod-tenant-id/c6dce933f7e94e7b9c885f76c1623171
+ - ClientSecret: https://kv-wake-prod.vault.azure.net:443/secrets/sp-testing-2-prod-client-secret/900ec11f83f34e31a81fe658edaf5397
+Action Log:
+2025-12-04 13:15:25Z - Assigned role AcrPull
+2025-12-04 13:15:38Z - Assigned role Key Vault Secrets User
+2025-12-04 13:15:46Z - Assigned role Reader
+====================

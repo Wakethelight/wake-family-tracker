@@ -243,3 +243,12 @@ if (-not $UpdateOnly) {
 $summaryLines += "Action Log:"
 $summaryLines += $actionLog
 $summaryLines += "===================="
+# Write summary to console
+$summaryLines | ForEach-Object { Write-Host $_ }
+
+# Export to file
+$timestamp = Get-Date -Format "yyyyMMdd-HHmmss"
+$summaryFile = ".\${SpName}-summary-$timestamp.txt"
+$summaryLines | Out-File -FilePath $summaryFile -Encoding UTF8
+
+Write-Host "Summary exported to $summaryFile" -ForegroundColor Green
